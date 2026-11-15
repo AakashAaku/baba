@@ -1,0 +1,14 @@
+{
+  "name": "baba-backend",
+  "version": "1.0.0",
+  "description": "BABA Family Connection Platform REST API server (Cloud Run ready)",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/server.ts",
+    "test": "node --experimental-strip-types --test test/server.test.ts"
+  }
+}

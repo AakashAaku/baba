@@ -1,0 +1,157 @@
+openapi: 3.1.0
+info:
+  title: BABA Family Connection Platform API
+  version: 1.0.0
+  description: >
+    Server-side backend API enforcing authentication, strict family tenant
+    isolation, hashed invitations, plan quotas and usage metering, media
+    validation, BABA multi-agent AI safety orchestration, and privacy exports.
+servers:
+  - url: http://localhost:8080
+    description: Local server
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, code]
+      properties:
+        error: { type: string }
+        code: { type: string }
+    AiRespondRequest:
+      type: object
+      required: [familyId, taskType, prompt, requestedMode]
+      properties:
+        familyId: { type: string }
+        taskType:
+          type: string
+          enum: [DIGITAL_BABA_CHAT, COMPANION_CHAT, KIDS_LEARNING, KIDS_STORYLAND]
+        prompt: { type: string, maxLength: 4000 }
+        requestedMode:
+          type: string
+          enum: [DIGITAL_BABA, BABA_COMPANION]
+    AiRespondResponse:
+      type: object
+      required:
+        - responseText
+        - identityMode
+        - sourceType
+        - sourceReferences
+        - requiresHumanInput
+        - safetyStatus
+        - disclosure
+        - agentUsed
+      properties:
+        responseText: { type: string }
+        identityMode: { type: string }
+        sourceType: { type: string }
+        sourceReferences:
+          type: array
+          items: { type: string }
+        requiresHumanInput: { type: boolean }
+        escalationType: { type: [string, "null"] }
+        safetyStatus:
+          type: string
+          enum: [approved, blocked, needs_review]
+        disclosure: { type: string }
+        agentUsed: { type: string }
+        usageUnitsConsumed: { type: integer }
+    MediaValidateRequest:
+      type: object
+      required: [familyId, mimeType, payloadBase64]
+      properties:
+        familyId: { type: string }
+        mimeType:
+          type: string
+          enum: [audio/mp4, audio/m4a, image/jpeg, image/png, image/webp]
+        payloadBase64: { type: string }
+        sharingScope:
+          type: string
+          enum: [private, selected_members, family]
+security:
+  - BearerAuth: []
+paths:
+  /api/v1/health:
+    get:
+      summary: Service health check
+      security: []
+      responses:
+        "200":
+          description: Healthy
+  /api/v1/families:
+    post:
+      summary: Create a family workspace for an authenticated adult
+      responses:
+        "201":
+          description: Created workspace
+        "401":
+          description: Missing or invalid authentication
+  /api/v1/invitations:
+    post:
+      summary: Issue an expiring invitation storing only SHA-256 tokenHash
+      responses:
+        "201":
+          description: Invitation created with one-time raw token returned once
+        "403":
+          description: Only family adults can create invitations
+  /api/v1/invitations/{inviteId}/accept:
+    post:
+      summary: Verify expiring SHA-256 token and verified email to join family
+      parameters:
+        - in: path
+          name: inviteId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Joined family workspace
+        "403":
+          description: Token mismatch, expired invite, or email mismatch
+  /api/v1/ai/respond:
+    post:
+      summary: Execute Safety/Memory/Specialist agent checks, meter quota, and respond
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiRespondRequest"
+      responses:
+        "200":
+          description: Grounded and safety-checked response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRespondResponse"
+        "429":
+          description: Monthly plan quota exceeded
+  /api/v1/media/validate:
+    post:
+      summary: Validate MIME, size <= 420KB, and block executable/script signatures
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaValidateRequest"
+      responses:
+        "200":
+          description: Validated media metadata
+        "400":
+          description: Blocked unsafe or oversized media
+  /api/v1/privacy/export:
+    post:
+      summary: Package authorized JSON archive for the authenticated requester
+      responses:
+        "200":
+          description: JSON data export bundle
+  /api/v1/usage/summary:
+    get:
+      summary: Return current monthly quota usage for an authorized family adult
+      responses:
+        "200":
+          description: Plan tier and consumed AI/media units

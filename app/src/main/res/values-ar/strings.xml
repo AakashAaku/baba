@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">BABA</string>
+    <string name="tagline">تواصل عائلي دافئ وشفاف</string>
+    <string name="disclosure_digital_baba">نسخة ذكاء اصطناعي لوالدك، مبنية على معلومات وافق عليها بنفسه.</string>
+    <string name="disclosure_baba_companion">أنا BABA، مساعد ذكاء اصطناعي مستقل.</string>
+    <string name="disclosure_real_baba">رسالة بشرية حقيقية وموثقة.</string>
+    <string name="sign_in_google">تسجيل الدخول عبر Google</string>
+    <string name="nav_father">الأب</string>
+    <string name="nav_wife">الزوجة</string>
+    <string name="nav_kids">الأطفال</string>
+    <string name="nav_hub">العائلة</string>
+    <string name="nav_safety">الأمان</string>
+</resources>

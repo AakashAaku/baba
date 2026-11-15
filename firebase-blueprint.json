@@ -1,0 +1,447 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Private user account and preferences isolated by owner UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID of the user." },
+        "displayName": { "type": "string", "description": "User display name." },
+        "locale": { "type": "string", "description": "Preferred language/locale code." },
+        "activeFamilyId": { "type": "string", "description": "Active family workspace ID." },
+        "quietHoursEnabled": { "type": "boolean", "description": "Notification quiet hours toggle." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of update." }
+      },
+      "required": ["uid", "displayName", "locale", "quietHoursEnabled", "createdAt", "updatedAt"]
+    },
+    "PrivateConversation": {
+      "title": "PrivateConversation",
+      "description": "Owner-only private AI companion conversation (e.g., wife's private companion).",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "description": "Owner UID matching path userId." },
+        "title": { "type": "string", "description": "Conversation title." },
+        "agentMode": { "type": "string", "enum": ["BABA_COMPANION"], "description": "Independent AI companion mode." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp." }
+      },
+      "required": ["ownerUid", "title", "agentMode", "createdAt", "updatedAt"]
+    },
+    "PrivateMessage": {
+      "title": "PrivateMessage",
+      "description": "Message inside an owner-only private companion conversation.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "description": "Owner UID." },
+        "senderType": { "type": "string", "enum": ["user", "ai"], "description": "User or AI sender." },
+        "text": { "type": "string", "description": "Message text." },
+        "identityMode": { "type": "string", "enum": ["BABA_COMPANION"], "description": "Disclosed identity mode." },
+        "disclosure": { "type": "string", "description": "Mandatory AI disclosure label." },
+        "safetyStatus": { "type": "string", "enum": ["approved", "blocked", "needs_review"], "description": "Deterministic safety status." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["ownerUid", "senderType", "text", "identityMode", "disclosure", "safetyStatus", "createdAt"]
+    },
+    "FamilyWorkspace": {
+      "title": "FamilyWorkspace",
+      "description": "Isolated family tenant workspace.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Family workspace name." },
+        "createdBy": { "type": "string", "description": "Creator UID." },
+        "status": { "type": "string", "enum": ["active", "suspended"], "description": "Workspace status." },
+        "planId": { "type": "string", "enum": ["free", "family_starter", "family_plus", "family_premium"], "description": "Subscription tier." },
+        "memberUids": { "type": "string", "description": "Bounded list of active member UIDs." },
+        "adultUids": { "type": "string", "description": "Bounded list of authorized adult UIDs." },
+        "lastAcceptedInviteId": { "type": "string", "description": "Optional invite ID used during join." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["name", "createdBy", "status", "planId", "memberUids", "adultUids", "createdAt", "updatedAt"]
+    },
+    "FamilyMember": {
+      "title": "FamilyMember",
+      "description": "Family membership, role, age band, and guardian consent state.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Parent family ID." },
+        "uid": { "type": "string", "description": "Member UID or child profile ID." },
+        "displayName": { "type": "string", "description": "Member display name." },
+        "role": { "type": "string", "enum": ["father", "wife", "child"], "description": "Family role." },
+        "ageBand": { "type": "string", "enum": ["adult", "6-8", "9-12", "13-15", "16-17"], "description": "Age band for safety filtering." },
+        "guardianUid": { "type": "string", "description": "Authorizing guardian UID for minors." },
+        "consentState": { "type": "string", "enum": ["granted", "pending", "revoked"], "description": "Consent status." },
+        "membershipStatus": { "type": "string", "enum": ["active", "suspended"], "description": "Membership status." },
+        "memberUids": { "type": "string", "description": "Denormalized family member UIDs." },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "uid", "displayName", "role", "ageBand", "consentState", "membershipStatus", "memberUids", "joinedAt", "updatedAt"]
+    },
+    "Invitation": {
+      "title": "Invitation",
+      "description": "Expiring single-use family invitation.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Target family ID." },
+        "familyName": { "type": "string", "description": "Target family display name." },
+        "invitedEmail": { "type": "string", "description": "Normalized email of intended invitee." },
+        "role": { "type": "string", "enum": ["father", "wife", "child"], "description": "Assigned role." },
+        "ageBand": { "type": "string", "enum": ["adult", "6-8", "9-12", "13-15", "16-17"], "description": "Assigned age band." },
+        "createdBy": { "type": "string", "description": "Inviting adult UID." },
+        "tokenHash": { "type": "string", "description": "SHA-256 hash of single-use invite token." },
+        "status": { "type": "string", "enum": ["pending", "accepted", "revoked"], "description": "Single-use status." },
+        "expiresAtMillis": { "type": "integer", "description": "Expiration epoch milliseconds." },
+        "acceptedByUid": { "type": "string", "description": "UID that accepted the invite." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "familyName", "invitedEmail", "role", "ageBand", "createdBy", "status", "expiresAtMillis", "createdAt", "updatedAt"]
+    },
+    "AiIdentity": {
+      "title": "AiIdentity",
+      "description": "Father-controlled Digital Baba identity profile with versioning and approval status.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "ownerUid": { "type": "string", "description": "Father / identity owner UID." },
+        "type": { "type": "string", "enum": ["DIGITAL_BABA"], "description": "Identity type." },
+        "activeVersion": { "type": "integer", "description": "Version number." },
+        "status": { "type": "string", "enum": ["draft", "approved", "suspended"], "description": "Approval state." },
+        "communicationStyle": { "type": "string", "description": "Tone and style guidelines." },
+        "values": { "type": "string", "description": "Approved core family values." },
+        "interests": { "type": "string", "description": "Approved hobbies and interests." },
+        "bioSummary": { "type": "string", "description": "Approved life summary." },
+        "voiceCloningEnabled": { "type": "boolean", "description": "Disabled by default in v1." },
+        "memberUids": { "type": "string", "description": "Denormalized family member UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "ownerUid", "type", "activeVersion", "status", "communicationStyle", "values", "interests", "bioSummary", "voiceCloningEnabled", "memberUids", "createdAt", "updatedAt"]
+    },
+    "FamilyMemory": {
+      "title": "FamilyMemory",
+      "description": "Structured family memory or identity source with provenance, sharing scope, and review status.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "ownerUid": { "type": "string", "description": "Uploader/owner UID." },
+        "memoryClass": { "type": "string", "enum": ["identity", "shared_family", "personal", "storyland", "wife_father", "private_vault"], "description": "Memory classification." },
+        "title": { "type": "string", "description": "Memory title." },
+        "content": { "type": "string", "description": "Memory text or transcript." },
+        "sourceType": { "type": "string", "enum": ["text", "audio", "image", "document", "human_guidance"], "description": "Source modality." },
+        "mediaId": { "type": "string", "description": "Optional synced FamilyMedia document ID." },
+        "provenanceNote": { "type": "string", "description": "Who supplied it and ownership confirmation." },
+        "sharingScope": { "type": "string", "enum": ["private", "selected_members", "family"], "description": "Visibility scope." },
+        "allowedMemberIds": { "type": "string", "description": "Bounded list of permitted UIDs." },
+        "readableByUids": { "type": "string", "description": "Denormalized authorized reader UIDs." },
+        "reviewStatus": { "type": "string", "enum": ["draft", "pending_review", "approved", "revoked"], "description": "Approval state." },
+        "ownershipConfirmed": { "type": "boolean", "description": "Uploader ownership confirmation." },
+        "memberUids": { "type": "string", "description": "Denormalized family member UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "ownerUid", "memoryClass", "title", "content", "sourceType", "provenanceNote", "sharingScope", "allowedMemberIds", "readableByUids", "reviewStatus", "ownershipConfirmed", "memberUids", "createdAt", "updatedAt"]
+    },
+    "FamilyGuidance": {
+      "title": "FamilyGuidance",
+      "description": "Live Guidance request, draft, and approved versioned guidance.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "authorUid": { "type": "string", "description": "Approving/authoring adult UID." },
+        "askedByUid": { "type": "string", "description": "Requester UID." },
+        "topic": { "type": "string", "description": "Guidance topic." },
+        "question": { "type": "string", "description": "Question needing adult view." },
+        "answerText": { "type": "string", "description": "Approved adult guidance text." },
+        "audience": { "type": "string", "enum": ["family", "wife", "child"], "description": "Permitted audience." },
+        "readableByUids": { "type": "string", "description": "Denormalized permitted reader UIDs." },
+        "status": { "type": "string", "enum": ["requested", "draft", "approved", "superseded"], "description": "Workflow status." },
+        "version": { "type": "integer", "description": "Guidance version." },
+        "reviewAfterLabel": { "type": "string", "description": "Scheduled review date label." },
+        "memberUids": { "type": "string", "description": "Denormalized family member UIDs." },
+        "adultUids": { "type": "string", "description": "Denormalized adult UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "authorUid", "askedByUid", "topic", "question", "answerText", "audience", "readableByUids", "status", "version", "reviewAfterLabel", "memberUids", "adultUids", "createdAt", "updatedAt"]
+    },
+    "FamilyMessage": {
+      "title": "FamilyMessage",
+      "description": "Genuine human-authored text or voice note between family members.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "senderUid": { "type": "string", "description": "Verified human sender UID." },
+        "senderName": { "type": "string", "description": "Human sender display name." },
+        "senderRole": { "type": "string", "enum": ["father", "wife", "child"], "description": "Sender role." },
+        "recipientScope": { "type": "string", "enum": ["family", "selected_members"], "description": "Delivery scope." },
+        "visibleToUids": { "type": "string", "description": "Denormalized authorized reader UIDs." },
+        "messageKind": { "type": "string", "enum": ["text", "voice_note"], "description": "Message modality." },
+        "textContent": { "type": "string", "description": "Text message or transcript." },
+        "audioDurationSec": { "type": "integer", "description": "Genuine voice note duration in seconds." },
+        "localAudioPath": { "type": "string", "description": "Local recording file reference if recorded on device." },
+        "mediaId": { "type": "string", "description": "Optional cross-device synced FamilyMedia document ID." },
+        "isHumanAuthored": { "type": "boolean", "description": "Always true for REAL_BABA messages." },
+        "memberUids": { "type": "string", "description": "Denormalized family member UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "senderUid", "senderName", "senderRole", "recipientScope", "visibleToUids", "messageKind", "textContent", "audioDurationSec", "isHumanAuthored", "memberUids", "createdAt"]
+    },
+    "FamilyEvent": {
+      "title": "FamilyEvent",
+      "description": "Shared family calendar event, birthday, milestone, or goal.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "createdBy": { "type": "string", "description": "Creator adult UID." },
+        "title": { "type": "string", "description": "Event title." },
+        "description": { "type": "string", "description": "Event details." },
+        "eventDateLabel": { "type": "string", "description": "Human-readable date/time." },
+        "category": { "type": "string", "enum": ["milestone", "birthday", "school", "call", "goal", "family_routine"], "description": "Event category." },
+        "childVisible": { "type": "boolean", "description": "Whether children can view this event." },
+        "visibleToUids": { "type": "string", "description": "Authorized reader UIDs." },
+        "memberUids": { "type": "string", "description": "Denormalized family member UIDs." },
+        "adultUids": { "type": "string", "description": "Denormalized adult UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "createdBy", "title", "description", "eventDateLabel", "category", "childVisible", "visibleToUids", "memberUids", "adultUids", "createdAt", "updatedAt"]
+    },
+    "AiSession": {
+      "title": "AiSession",
+      "description": "Family AI conversation session (Digital Baba, Storyland, Learning Academy).",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "participantUid": { "type": "string", "description": "Initiating member UID." },
+        "surface": { "type": "string", "enum": ["digital_baba", "storyland", "learning_academy", "companion"], "description": "Product surface." },
+        "agentMode": { "type": "string", "enum": ["DIGITAL_BABA", "BABA_COMPANION"], "description": "Disclosed AI identity mode." },
+        "guardianOversight": { "type": "boolean", "description": "Proportionate adult visibility for child sessions." },
+        "visibleToUids": { "type": "string", "description": "Authorized reader UIDs." },
+        "adultUids": { "type": "string", "description": "Denormalized adult UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "participantUid", "surface", "agentMode", "guardianOversight", "visibleToUids", "adultUids", "createdAt", "updatedAt"]
+    },
+    "AiTurn": {
+      "title": "AiTurn",
+      "description": "Turn inside a family AI session with structured provenance and disclosure.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "participantUid": { "type": "string", "description": "Session owner UID." },
+        "senderType": { "type": "string", "enum": ["user", "ai"], "description": "User or AI." },
+        "text": { "type": "string", "description": "Message content." },
+        "identityMode": { "type": "string", "enum": ["DIGITAL_BABA", "BABA_COMPANION", "REAL_BABA"], "description": "Disclosed identity mode." },
+        "sourceType": { "type": "string", "enum": ["approved_guidance", "memory", "general_ai", "human_message"], "description": "Grounding source type." },
+        "sourceReferences": { "type": "string", "description": "Bounded list of memory/guidance IDs." },
+        "requiresHumanInput": { "type": "boolean", "description": "Whether Live Guidance is requested." },
+        "escalationType": { "type": "string", "description": "Optional escalation classification." },
+        "safetyStatus": { "type": "string", "enum": ["approved", "blocked", "needs_review"], "description": "Safety gate result." },
+        "disclosure": { "type": "string", "description": "Mandatory disclosure text." },
+        "visibleToUids": { "type": "string", "description": "Authorized reader UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "participantUid", "senderType", "text", "identityMode", "sourceType", "sourceReferences", "requiresHumanInput", "safetyStatus", "disclosure", "visibleToUids", "createdAt"]
+    },
+    "ConsentRecord": {
+      "title": "ConsentRecord",
+      "description": "Explicit privacy, voice, and child-onboarding consent record.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "subjectUid": { "type": "string", "description": "Data subject UID." },
+        "guardianUid": { "type": "string", "description": "Authorizing guardian UID." },
+        "purpose": { "type": "string", "description": "Consent purpose." },
+        "status": { "type": "string", "enum": ["granted", "revoked"], "description": "Consent decision." },
+        "version": { "type": "string", "description": "Policy version." },
+        "visibleToUids": { "type": "string", "description": "Authorized reader UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "subjectUid", "guardianUid", "purpose", "status", "version", "visibleToUids", "createdAt", "updatedAt"]
+    },
+    "SafetyEvent": {
+      "title": "SafetyEvent",
+      "description": "Minimal-metadata safety escalation record (contains no raw private conversation text).",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "triggeredByUid": { "type": "string", "description": "User UID involved." },
+        "category": { "type": "string", "enum": ["prompt_injection", "child_secrecy", "pii_guard", "medical_legal_escalation", "high_risk_child", "user_report"], "description": "Safety category." },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"], "description": "Severity level." },
+        "status": { "type": "string", "enum": ["open", "reviewed", "resolved"], "description": "Triage status." },
+        "summaryMetadata": { "type": "string", "description": "Non-private summary metadata for review." },
+        "adultUids": { "type": "string", "description": "Authorized adult UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "triggeredByUid", "category", "severity", "status", "summaryMetadata", "adultUids", "createdAt", "updatedAt"]
+    },
+    "DataRequest": {
+      "title": "DataRequest",
+      "description": "Authenticated user or guardian export/deletion request.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "requesterUid": { "type": "string", "description": "Requester UID." },
+        "requestType": { "type": "string", "enum": ["export", "delete"], "description": "Request kind." },
+        "status": { "type": "string", "enum": ["submitted", "processing", "completed"], "description": "Workflow state." },
+        "notes": { "type": "string", "description": "Request scope notes." },
+        "visibleToUids": { "type": "string", "description": "Authorized reader UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "requesterUid", "requestType", "status", "notes", "visibleToUids", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Append-only governance and privacy audit log.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string", "description": "Family tenant ID." },
+        "actorUid": { "type": "string", "description": "Acting user UID." },
+        "action": { "type": "string", "description": "Action name." },
+        "resourceType": { "type": "string", "description": "Affected resource type." },
+        "resourceId": { "type": "string", "description": "Affected resource ID." },
+        "outcome": { "type": "string", "enum": ["allowed", "denied", "escalated"], "description": "Outcome." },
+        "adultUids": { "type": "string", "description": "Authorized adult UIDs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["familyId", "actorUid", "action", "resourceType", "resourceId", "outcome", "adultUids", "createdAt"]
+    },
+    "FamilyMedia": {
+      "title": "FamilyMedia",
+      "description": "Validated cross-device family voice note or compressed image payload.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "byteSize": { "type": "integer" },
+        "scanStatus": { "type": "string", "enum": ["validated"] },
+        "sharingScope": { "type": "string", "enum": ["private", "selected_members", "family"] },
+        "visibleToUids": { "type": "string" },
+        "payloadBase64": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["familyId", "ownerUid", "mimeType", "byteSize", "scanStatus", "sharingScope", "visibleToUids", "payloadBase64", "createdAt"]
+    },
+    "FamilyNotification": {
+      "title": "FamilyNotification",
+      "description": "Recipient-scoped in-app notification honoring quiet hours.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string", "enum": ["real_baba_message", "live_guidance_request", "safety_escalation", "family_event"] },
+        "recipientUids": { "type": "string" },
+        "readByUids": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["familyId", "title", "body", "type", "recipientUids", "readByUids", "createdAt"]
+    },
+    "UsageRecord": {
+      "title": "UsageRecord",
+      "description": "Per-family AI and media usage metering record for quota enforcement.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string" },
+        "actorUid": { "type": "string" },
+        "service": { "type": "string", "enum": ["ai_turn", "voice_note", "media_upload", "data_export"] },
+        "units": { "type": "integer" },
+        "estimatedCostUsdCents": { "type": "integer" },
+        "periodKey": { "type": "string" },
+        "adultUids": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["familyId", "actorUid", "service", "units", "estimatedCostUsdCents", "periodKey", "adultUids", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Private user account and notification preferences."
+    },
+    "/users/{userId}/privateConversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/PrivateConversation" },
+      "description": "Private-by-default adult companion conversations."
+    },
+    "/users/{userId}/privateConversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/PrivateMessage" },
+      "description": "Messages inside owner-only companion conversations."
+    },
+    "/families/{familyId}": {
+      "schema": { "$ref": "#/entities/FamilyWorkspace" },
+      "description": "Isolated family tenant workspaces."
+    },
+    "/families/{familyId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/FamilyMember" },
+      "description": "Family membership, role, and consent records."
+    },
+    "/invitations/{inviteId}": {
+      "schema": { "$ref": "#/entities/Invitation" },
+      "description": "Expiring single-use family invitations."
+    },
+    "/families/{familyId}/aiIdentities/{identityId}": {
+      "schema": { "$ref": "#/entities/AiIdentity" },
+      "description": "Versioned Digital Baba identity records."
+    },
+    "/families/{familyId}/memories/{memoryId}": {
+      "schema": { "$ref": "#/entities/FamilyMemory" },
+      "description": "Provenance-tracked family memories and identity sources."
+    },
+    "/families/{familyId}/guidance/{guidanceId}": {
+      "schema": { "$ref": "#/entities/FamilyGuidance" },
+      "description": "Live Guidance requests, drafts, and approved guidance."
+    },
+    "/families/{familyId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/FamilyMessage" },
+      "description": "Genuine human-authored text and voice messages."
+    },
+    "/families/{familyId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/FamilyEvent" },
+      "description": "Shared family calendar events and milestones."
+    },
+    "/families/{familyId}/aiSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/AiSession" },
+      "description": "Family AI interaction sessions."
+    },
+    "/families/{familyId}/aiSessions/{sessionId}/turns/{turnId}": {
+      "schema": { "$ref": "#/entities/AiTurn" },
+      "description": "Structured AI conversation turns with disclosure and source references."
+    },
+    "/families/{familyId}/consents/{consentId}": {
+      "schema": { "$ref": "#/entities/ConsentRecord" },
+      "description": "Consent records for adult and child participation."
+    },
+    "/families/{familyId}/safetyEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/SafetyEvent" },
+      "description": "Minimal-metadata safety and escalation events."
+    },
+    "/families/{familyId}/dataRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/DataRequest" },
+      "description": "Export and deletion privacy requests."
+    },
+    "/families/{familyId}/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Append-only governance audit trail."
+    },
+    "/families/{familyId}/media/{mediaId}": {
+      "schema": { "$ref": "#/entities/FamilyMedia" },
+      "description": "Validated cross-device voice and compressed photo media."
+    },
+    "/families/{familyId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/FamilyNotification" },
+      "description": "Family notification inbox events scoped by recipient UID."
+    },
+    "/families/{familyId}/usageRecords/{recordId}": {
+      "schema": { "$ref": "#/entities/UsageRecord" },
+      "description": "Usage metering records for subscription quotas."
+    }
+  }
+}

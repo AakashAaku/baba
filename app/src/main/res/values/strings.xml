@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">BABA</string>
+    <string name="tagline">Family Connection, Transparently Grounded</string>
+    <string name="disclosure_digital_baba">AI version of your father, based on information he approved.</string>
+    <string name="disclosure_baba_companion">I am BABA, an AI companion.</string>
+    <string name="disclosure_real_baba">Verified human-authored message.</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="nav_father">Father</string>
+    <string name="nav_wife">Wife</string>
+    <string name="nav_kids">Kids</string>
+    <string name="nav_hub">Hub</string>
+    <string name="nav_safety">Safety</string>
+</resources>
