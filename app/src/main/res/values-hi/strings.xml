@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BABA</string>
+    <string name="tagline">दूर रहकर भी परिवार से सच्चा और सुरक्षित जुड़ाव</string>
+    <string name="label_digital_baba">डिजिटल बाबा</string>
+    <string name="label_baba_companion">BABA साथी</string>
+    <string name="label_real_baba">असली बाबा</string>
+    <string name="disclosure_digital_baba">यह आपके पिता का AI रूप है, जो उनकी स्वीकृत जानकारी पर आधारित है।</string>
+    <string name="disclosure_baba_companion">मैं BABA हूँ, एक स्वतंत्र AI साथी।</string>
+    <string name="disclosure_real_baba">इंसान द्वारा भेजा गया सत्यापित वास्तविक संदेश।</string>
+    <string name="sign_in_google">Google से साइन इन करें</string>
+    <string name="sign_out">साइन आउट</string>
+    <string name="select_language_title">अपनी पारिवारिक भाषा चुनें</string>
+    <string name="select_language_subtitle">लॉगिन से पहले या बाद में चुनें ताकि हर माता-पिता और बच्चा आसानी से बात कर सके।</string>
+    <string name="hybrid_identity_title">सच्चाई और पहचान की स्पष्ट गारंटी</string>
+    <string name="hybrid_identity_body">BABA कभी पिता की नकली आवाज़ या बात नहीं बनाता। हर बातचीत में ये तीन मोड साफ अलग रहते हैं:</string>
+    <string name="nav_father">पिता</string>
+    <string name="nav_wife">पत्नी</string>
+    <string name="nav_kids">बच्चे</string>
+    <string name="nav_hub">परिवार</string>
+    <string name="nav_safety">सुरक्षा</string>
+
+    <string name="setup_title">BABA परिवार सेटअप</string>
+    <string name="setup_welcome_prefix">स्वागत है</string>
+    <string name="setup_subtitle">पिता या पत्नी के रूप में सुरक्षित परिवार कार्यक्षेत्र बनाएं, या निमंत्रण स्वीकार करें।</string>
+    <string name="create_workspace_title">परिवार कार्यक्षेत्र बनाएं</string>
+    <string name="workspace_name_label">परिवार कार्यक्षेत्र का नाम</string>
+    <string name="your_role_label">आपकी भूमिका</string>
+    <string name="child_policy_note">बच्चों के प्रोफाइल केवल अभिभावक की सहमति से वयस्क सदस्य द्वारा जोड़े जाते हैं।</string>
+    <string name="create_workspace_button">कार्यक्षेत्र बनाएं और सहमति दें</string>
+    <string name="pending_invites_title">लंबित निमंत्रण</string>
+    <string name="no_pending_invites">कोई लंबित निमंत्रण नहीं</string>
+    <string name="no_pending_invites_desc">यदि परिवार के किसी वयस्क ने आपके Google ईमेल पर निमंत्रण भेजा है, तो वह यहाँ दिखेगा।</string>
+    <string name="accept_join_button">स्वीकार करें और परिवार से जुड़ें</string>
+
+    <string name="father_tab_identity">पहचान</string>
+    <string name="father_tab_memories">यादें</string>
+    <string name="father_tab_guidance">लाइव मार्गदर्शन</string>
+    <string name="father_tab_real_baba">असली बाबा</string>
+    <string name="father_tab_members">परिवार व बच्चे</string>
+    <string name="sent_invitations_title">भेजे गए पारिवारिक निमंत्रण</string>
+    <string name="action_share_invite">निमंत्रण साझा करें</string>
+    <string name="action_revoke">रद्द करें</string>
+
+    <string name="wife_tab_companion">निजी साथी</string>
+    <string name="wife_tab_digital_baba">डिजिटल बाबा</string>
+    <string name="wife_tab_planning">साझा योजना</string>
+
+    <string name="kids_tab_digital_baba">डिजिटल बाबा</string>
+    <string name="kids_tab_storyland">कहानी संसार</string>
+    <string name="kids_tab_learning">पढ़ाई सहायता</string>
+    <string name="kids_tab_real_baba">असली बाबा</string>
+    <string name="kids_tab_memories">यादें</string>
+    <string name="kids_help_button">मदद</string>
+    <string name="kids_help_dialog_title">मदद चाहिए या असहज महसूस हो रहा है?</string>
+    <string name="kids_help_dialog_body">तुरंत किसी भरोसेमंद वयस्क को बताएं। मदद के लिए केवल संक्षिप्त सुरक्षा अलर्ट भेजा जाएगा।</string>
+    <string name="kids_help_send">मदद अलर्ट भेजें</string>
+
+    <string name="hub_subtitle">साझा समयरेखा, स्थानीय समय और वास्तविक संदेश</string>
+    <string name="hub_distance_bridge_title">दूरी सेतु — घर और विदेश का स्थानीय समय</string>
+    <string name="hub_home_time_label">घर का स्थानीय समय</string>
+    <string name="hub_abroad_time_label">विदेश में पिता का समय</string>
+    <string name="hub_checkin_button">सुरक्षित चेक-इन भेजें</string>
+    <string name="hub_request_call_button">वीडियो कॉल तय करें</string>
+    <string name="hub_send_note_title">असली पारिवारिक संदेश या आवाज़ भेजें</string>
+    <string name="hub_send_note_button">सत्यापित संदेश पोस्ट करें</string>
+    <string name="hub_recent_messages_title">हाल के पारिवारिक संदेश</string>
+    <string name="hub_calendar_title">साझा परिवार कैलेंडर</string>
+    <string name="hub_members_title">परिवार के सदस्य</string>
+    <string name="hub_switch_workspace">परिवार कार्यक्षेत्र बदलें</string>
+
+    <string name="gov_title">सुरक्षा, गोपनीयता और नियंत्रण</string>
+    <string name="gov_privacy_banner">गोपनीयता गारंटी: यहाँ केवल सुरक्षा अलर्ट, सहमति और ऑडिट लॉग दिखते हैं। पत्नी के निजी AI संवाद पूरी तरह गोपनीय रहते हैं।</string>
+    <string name="gov_quiet_hours_title">शांत समय सुरक्षा (Quiet Hours)</string>
+    <string name="gov_quiet_hours_desc">रात के समय गैर-जरूरी रिमाइंडर और AI सूचनाएं रोकें।</string>
+    <string name="gov_language_title">भाषा चुनें / Language</string>
+    <string name="gov_plan_quota_title">प्लान और मासिक सीमा</string>
+    <string name="gov_consents_title">सहमति और सदस्य प्रबंधन</string>
+    <string name="gov_export_delete_title">डेटा निर्यात और हटाने का अनुरोध</string>
+    <string name="gov_safety_queue_title">सुरक्षा चेतावनी कतार</string>
+    <string name="gov_audit_title">अपरिवर्तनीय ऑडिट लॉग</string>
+
+    <string name="action_save">सहेजें</string>
+    <string name="action_cancel">रद्द करें</string>
+    <string name="action_close">बंद करें</string>
+    <string name="loading_workspace">BABA परिवार कार्यक्षेत्र लोड हो रहा है...</string>
+</resources>

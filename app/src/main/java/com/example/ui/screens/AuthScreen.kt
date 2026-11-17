@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,14 +37,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.model.IdentityMode
+import com.example.ui.components.AsyncDrawableImage
 import com.example.ui.components.IdentityModeBadge
+import com.example.ui.components.LanguageSelectorFlowRow
+import com.example.ui.components.localizedDisclosure
 import com.example.ui.theme.AlertCoral
 import com.example.ui.theme.AlertCoralSoft
 import com.example.ui.theme.PureWhite
@@ -54,7 +56,9 @@ import com.example.ui.theme.TrustNavy
 fun AuthScreen(
     isSigningIn: Boolean,
     errorMessage: String?,
-    onGoogleSignIn: () -> Unit
+    onGoogleSignIn: () -> Unit,
+    selectedLocale: String = "en",
+    onSelectLocale: (String) -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -72,16 +76,16 @@ fun AuthScreen(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(190.dp)
+                        .height(176.dp)
                         .clip(RoundedCornerShape(24.dp))
                 ) {
-                    com.example.ui.components.AsyncDrawableImage(
+                    AsyncDrawableImage(
                         resId = R.drawable.img_family_bridge_hero,
                         contentDescription = "BABA warm family sanctuary illustration",
                         modifier = Modifier.fillMaxSize()
@@ -89,22 +93,59 @@ fun AuthScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(TrustNavy.copy(alpha = 0.42f))
+                            .background(TrustNavy.copy(alpha = 0.44f))
                             .padding(20.dp),
                         contentAlignment = Alignment.BottomStart
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
-                                text = "BABA",
+                                text = stringResource(R.string.app_name),
                                 style = MaterialTheme.typography.displayLarge,
                                 color = PureWhite
                             )
                             Text(
-                                text = "Family Connection, Transparently Grounded",
+                                text = stringResource(R.string.tagline),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = PureWhite.copy(alpha = 0.92f)
+                                color = PureWhite.copy(alpha = 0.94f)
                             )
                         }
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = stringResource(R.string.select_language_title),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = stringResource(R.string.select_language_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.select_language_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        LanguageSelectorFlowRow(
+                            selectedCode = selectedLocale,
+                            onSelectLocale = onSelectLocale,
+                            modifier = Modifier.testTag("prelogin_language_selector")
+                        )
                     }
                 }
 
@@ -127,13 +168,13 @@ fun AuthScreen(
                                 tint = MaterialTheme.colorScheme.secondary
                             )
                             Text(
-                                text = "Hybrid Identity & Truthfulness",
+                                text = stringResource(R.string.hybrid_identity_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                         Text(
-                            text = "BABA never fakes a father's words or voice. Every interaction clearly distinguishes between three verified modes:",
+                            text = stringResource(R.string.hybrid_identity_body),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -149,7 +190,7 @@ fun AuthScreen(
                                 ) {
                                     IdentityModeBadge(mode = mode)
                                     Text(
-                                        text = mode.disclosureText,
+                                        text = mode.localizedDisclosure(),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
@@ -214,7 +255,7 @@ fun AuthScreen(
                         )
                         Spacer(Modifier.size(10.dp))
                         Text(
-                            text = "Sign in with Google",
+                            text = stringResource(R.string.sign_in_google),
                             style = MaterialTheme.typography.titleMedium
                         )
                     }

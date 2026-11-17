@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FamilyRestroom
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
@@ -34,10 +35,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.domain.model.FamilyRole
 import com.example.domain.model.Invitation
 import com.example.ui.components.EmptyStateCard
+import com.example.ui.components.LanguageSelectorFlowRow
 import com.example.ui.components.StatusBannerBar
 
 @Composable
@@ -47,7 +51,9 @@ fun FamilySetupScreen(
     statusBanner: String?,
     onDismissBanner: () -> Unit,
     onCreateFamily: (String, FamilyRole) -> Unit,
-    onAcceptInvitation: (Invitation) -> Unit
+    onAcceptInvitation: (Invitation) -> Unit,
+    selectedLocale: String = "en",
+    onSelectLocale: (String) -> Unit = {}
 ) {
     var familyName by remember { mutableStateOf("$displayName Family") }
     var selectedRole by remember { mutableStateOf(FamilyRole.FATHER) }
@@ -66,14 +72,43 @@ fun FamilySetupScreen(
             StatusBannerBar(message = statusBanner, onDismiss = onDismissBanner)
 
             Text(
-                text = "Welcome, ${displayName.ifBlank { "Family Member" }}",
+                text = "${stringResource(R.string.setup_welcome_prefix)}, ${displayName.ifBlank { "Family Member" }}",
                 style = MaterialTheme.typography.headlineLarge
             )
             Text(
-                text = "Start a protected family workspace as a Father or Wife, or accept an expiring single-use invitation.",
+                text = stringResource(R.string.setup_subtitle),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = stringResource(R.string.select_language_title)
+                        )
+                        Text(
+                            text = stringResource(R.string.select_language_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    LanguageSelectorFlowRow(
+                        selectedCode = selectedLocale,
+                        onSelectLocale = onSelectLocale
+                    )
+                }
+            }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -90,29 +125,37 @@ fun FamilySetupScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.FamilyRestroom,
-                            contentDescription = "Create workspace",
+                            contentDescription = stringResource(R.string.create_workspace_title),
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Text("Create Family Workspace", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            stringResource(R.string.create_workspace_title),
+                            style = MaterialTheme.typography.titleLarge
+                        )
                     }
 
                     OutlinedTextField(
                         value = familyName,
                         onValueChange = { familyName = it },
-                        label = { Text("Family Workspace Name") },
+                        label = { Text(stringResource(R.string.workspace_name_label)) },
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("family_name_input")
                     )
 
-                    Text("Your Adult Role", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.your_role_label), style = MaterialTheme.typography.labelLarge)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         listOf(FamilyRole.FATHER, FamilyRole.WIFE).forEach { role ->
+                            val localizedRole = if (role == FamilyRole.FATHER) {
+                                stringResource(R.string.nav_father)
+                            } else {
+                                stringResource(R.string.nav_wife)
+                            }
                             FilterChip(
                                 selected = selectedRole == role,
                                 onClick = { selectedRole = role },
-                                label = { Text(role.label) },
+                                label = { Text(localizedRole) },
                                 modifier = Modifier.testTag("role_chip_${role.apiValue}")
                             )
                         }
@@ -134,7 +177,7 @@ fun FamilySetupScreen(
                                 tint = MaterialTheme.colorScheme.secondary
                             )
                             Text(
-                                text = "Child accounts cannot self-create workspaces and are added inside the family by a verified adult with explicit consent.",
+                                text = stringResource(R.string.child_policy_note),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -148,21 +191,22 @@ fun FamilySetupScreen(
                             .height(50.dp)
                             .testTag("create_family_button")
                     ) {
-                        Text("Create Workspace & Consent")
+                        Text(stringResource(R.string.create_workspace_button))
                     }
                 }
             }
 
-            Text("Pending Invitations", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.pending_invites_title), style = MaterialTheme.typography.titleLarge)
 
-            if (invitations.isEmpty()) {
+            val pendingInvites = invitations.filter { it.status == "pending" }
+            if (pendingInvites.isEmpty()) {
                 EmptyStateCard(
-                    title = "No pending invitations",
-                    description = "If another family adult invited your Google email, their expiring invite will appear here automatically.",
+                    title = stringResource(R.string.no_pending_invites),
+                    description = stringResource(R.string.no_pending_invites_desc),
                     icon = Icons.Default.MarkEmailRead
                 )
             } else {
-                invitations.forEach { invite ->
+                pendingInvites.forEach { invite ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -185,7 +229,7 @@ fun FamilySetupScreen(
                                     .fillMaxWidth()
                                     .testTag("accept_invite_button")
                             ) {
-                                Text("Accept & Join Family")
+                                Text(stringResource(R.string.accept_join_button))
                             }
                         }
                     }

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -57,9 +59,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.core.VoiceRecorderHelper
 import com.example.domain.model.AgeBand
 import com.example.domain.model.AiIdentity
@@ -89,7 +93,13 @@ fun FatherScreen(
     val family = data.activeFamily ?: return
     val member = data.currentMember ?: return
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Identity", "Memories", "Live Guidance", "Real Baba", "Family & Kids")
+    val tabs = listOf(
+        stringResource(R.string.father_tab_identity),
+        stringResource(R.string.father_tab_memories),
+        stringResource(R.string.father_tab_guidance),
+        stringResource(R.string.father_tab_real_baba),
+        stringResource(R.string.father_tab_members)
+    )
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -848,6 +858,7 @@ private fun FatherFamilyMembersTab(
     viewModel: BabaWorkspaceViewModel
 ) {
     val family = data.activeFamily ?: return
+    val context = LocalContext.current
     var inviteEmail by remember { mutableStateOf("") }
     var inviteRole by remember { mutableStateOf(FamilyRole.WIFE) }
 
@@ -888,6 +899,80 @@ private fun FatherFamilyMembersTab(
                 modifier = Modifier.fillMaxWidth().testTag("send_invite_button")
             ) {
                 Text("Create Expiring Single-Use Invite")
+            }
+        }
+    }
+
+    val familyInvites = data.invitations.filter { it.familyId == family.id }
+    Text("${stringResource(R.string.sent_invitations_title)} (${familyInvites.size})", style = MaterialTheme.typography.titleLarge)
+    if (familyInvites.isEmpty()) {
+        EmptyStateCard(
+            title = "No invitations created yet",
+            description = "Invite your wife or co-parent using their verified Google email so their phone links securely to ${family.name}."
+        )
+    } else {
+        val shareLabel = stringResource(R.string.action_share_invite)
+        val revokeLabel = stringResource(R.string.action_revoke)
+        familyInvites.forEach { inv ->
+            val hoursRemaining = ((inv.expiresAtMillis - System.currentTimeMillis()) / 3_600_000L).coerceAtLeast(0L)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(inv.invitedEmail, style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            text = "${inv.role.uppercase()} • ${inv.status.uppercase()}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    Text(
+                        text = if (inv.status == "pending") "Expires in ${hoursRemaining}h" else "Status: ${inv.status}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (inv.status == "pending") {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    val shareText = "You are invited to join \"${family.name}\" on BABA as ${inv.role.uppercase()}. Install BABA, select your family language, and sign in with ${inv.invitedEmail} to accept automatically."
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, "BABA Family Invite: ${family.name}")
+                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                    }
+                                    runCatching {
+                                        val chooser = Intent.createChooser(sendIntent, shareLabel).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(chooser)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).testTag("share_invite_${inv.id}")
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = shareLabel)
+                                Spacer(Modifier.padding(horizontal = 3.dp))
+                                Text(shareLabel)
+                            }
+                            TextButton(
+                                onClick = { viewModel.revokeInvitation(inv.id) },
+                                modifier = Modifier.testTag("revoke_invite_${inv.id}")
+                            ) {
+                                Text(revokeLabel, color = AlertCoral)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

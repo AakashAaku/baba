@@ -8,13 +8,14 @@ export type AiModelGenerator = (params: {
   requester: FamilyMemberRecord;
   digitalBabaIdentity: AiIdentityRecord | null;
   context: PermittedContext;
+  locale?: string;
 }) => Promise<RawModelResponse>;
 
 export function buildGroundedGeminiGenerator(apiKey = process.env.GEMINI_API_KEY): AiModelGenerator {
-  return async ({ taskType, requestedMode, prompt, requester, digitalBabaIdentity, context }) => {
+  return async ({ taskType, requestedMode, prompt, requester, digitalBabaIdentity, context, locale = "en" }) => {
     if (apiKey && apiKey.trim().length > 0 && apiKey !== "MY_GEMINI_API_KEY") {
       try {
-        const systemInstruction = buildSystemPrompt(taskType, requestedMode, requester, digitalBabaIdentity, context);
+        const systemInstruction = buildSystemPrompt(taskType, requestedMode, requester, digitalBabaIdentity, context, locale);
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
         const res = await fetch(url, {
           method: "POST",
@@ -123,15 +124,17 @@ function buildSystemPrompt(
   mode: IdentityMode,
   requester: FamilyMemberRecord,
   identity: AiIdentityRecord | null,
-  context: PermittedContext
+  context: PermittedContext,
+  locale = "en"
 ): string {
   const guidanceLines = context.guidance
     .map((g) => `- [${g.id}] ${g.topic}: ${g.answerText}`)
     .join("\n");
   const memoryLines = context.memories.map((m) => `- [${m.id}] ${m.title}: ${m.content}`).join("\n");
   return [
-    `Mode: ${mode} | Task: ${taskType} | Requester role: ${requester.role} (${requester.ageBand})`,
+    `Mode: ${mode} | Task: ${taskType} | Requester role: ${requester.role} (${requester.ageBand}) | Preferred Locale: ${locale}`,
     identity ? `Approved Identity Bio: ${identity.bioSummary} | Values: ${identity.values}` : "",
+    "Respond in the family's preferred locale (en, ne, hi, bn, ur, ar) unless explicitly asked in another language.",
     "Return JSON: {responseText, sourceType, sourceReferences, requiresHumanInput, escalationType, safetyStatus}.",
     "Never invent Father guidance or cross family boundaries.",
     `Approved Guidance:\n${guidanceLines || "(none)"}`,

@@ -236,6 +236,7 @@ export function createBabaServer(options: BabaServerOptions = {}): { server: Ser
           requester: member,
           digitalBabaIdentity: identity,
           context,
+          locale: typeof body.locale === "string" ? body.locale.slice(0, 12) : "en",
         });
 
         const checked = runSafetyPostCheck({

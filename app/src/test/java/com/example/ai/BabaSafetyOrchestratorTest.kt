@@ -303,4 +303,70 @@ class BabaSafetyOrchestratorTest {
         // Post-check sanitizes unauthorized source reference IDs
         assertEquals(listOf("m_approved"), result.response.sourceReferences)
     }
+
+    @Test
+    fun `preferredLocale injects target family language into prompt for diaspora families`() = runTest {
+        var capturedPrompt = ""
+        val provider = FakeBabaAiProvider { sysPrompt, mode ->
+            capturedPrompt = sysPrompt
+            RawModelStructuredOutput(
+                responseText = "नमस्ते आमा, बुबाले तिमीलाई धेरै माया गर्नुहुन्छ।",
+                identityMode = mode,
+                sourceType = SourceType.APPROVED_GUIDANCE,
+                sourceReferences = listOf("g_ne"),
+                requiresHumanInput = false,
+                escalationType = null,
+                safetyStatus = SafetyStatus.APPROVED
+            )
+        }
+        val guidance = FamilyGuidance(
+            id = "g_ne",
+            familyId = familyId,
+            topic = "Homework",
+            question = "How should children approach homework?",
+            answerText = "Finish homework calmly before dinner.",
+            audience = "child",
+            readableByUids = listOf(childUid),
+            status = "approved"
+        )
+        val orchestrator = BabaOrchestrator(provider)
+        val result = orchestrator.handleRequest(
+            familyId = familyId,
+            requester = childMember,
+            taskType = OrchestratorTaskType.DIGITAL_BABA_CHAT,
+            userPrompt = "मलाई गृहकार्य गर्न गाह्रो लाग्यो।",
+            digitalBabaIdentity = approvedIdentity,
+            allMemories = emptyList(),
+            allGuidance = listOf(guidance),
+            preferredLocale = "ne"
+        )
+        assertEquals(SafetyStatus.APPROVED, result.response.safetyStatus)
+        assertTrue(capturedPrompt.contains("Nepali"))
+    }
+
+    @Test
+    fun `multilingual child secrecy requests in Nepali Hindi and Urdu are blocked deterministically`() = runTest {
+        val provider = FakeBabaAiProvider { _, _ -> error("Should not reach LLM") }
+        val orchestrator = BabaOrchestrator(provider)
+        val cues = listOf(
+            "बुबा लाई नभन्नु है",
+            "मम्मी को मत बताना please",
+            "امی کو مت بتانا یہ بات"
+        )
+        cues.forEach { cue ->
+            val result = orchestrator.handleRequest(
+                familyId = familyId,
+                requester = childMember,
+                taskType = OrchestratorTaskType.KIDS_LEARNING,
+                userPrompt = cue,
+                digitalBabaIdentity = approvedIdentity,
+                allMemories = emptyList(),
+                allGuidance = emptyList(),
+                preferredLocale = "hi"
+            )
+            assertEquals("Expected $cue to be blocked", SafetyStatus.BLOCKED, result.response.safetyStatus)
+            assertEquals("child_secrecy", result.safetyCategory)
+        }
+        assertEquals(0, provider.calledCount)
+    }
 }

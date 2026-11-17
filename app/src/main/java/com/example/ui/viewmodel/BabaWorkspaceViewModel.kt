@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.ai.BabaOrchestrator
 import com.example.ai.FirebaseBabaAiProvider
 import com.example.ai.OrchestratorTaskType
+import com.example.core.AppLanguage
 import com.example.core.AppLocaleHelper
 import com.example.core.MediaValidationResult
 import com.example.core.MediaValidator
@@ -95,7 +96,11 @@ class BabaWorkspaceViewModel(
     private val identityMemoryRepository: IdentityMemoryRepository,
     private val messagingHubRepository: MessagingHubRepository,
     private val governanceRepository: GovernanceRepository,
-    private val orchestrator: BabaOrchestrator = BabaOrchestrator(FirebaseBabaAiProvider())
+    private val orchestrator: BabaOrchestrator = BabaOrchestrator(FirebaseBabaAiProvider()),
+    private val initialLocale: String = "en",
+    private val preLoginPendingLocale: Boolean = false,
+    private val onPreLoginLocaleCommitted: () -> Unit = {},
+    private val onLocaleChanged: (String) -> Unit = {}
 ) : ViewModel() {
 
     private val _selectedSurface = MutableStateFlow<AppSurface?>(null)
@@ -103,6 +108,9 @@ class BabaWorkspaceViewModel(
 
     private val _supervisedChildId = MutableStateFlow<String?>(null)
     val supervisedChildId: StateFlow<String?> = _supervisedChildId.asStateFlow()
+
+    private val _activeLocale = MutableStateFlow(AppLanguage.fromCode(initialLocale).code)
+    val activeLocale: StateFlow<String> = _activeLocale.asStateFlow()
 
     private val _aiBusy = MutableStateFlow(false)
     val aiBusy: StateFlow<Boolean> = _aiBusy.asStateFlow()
@@ -121,7 +129,11 @@ class BabaWorkspaceViewModel(
 
     init {
         viewModelScope.launch {
-            familyRepository.ensureUserAccount(currentUserName)
+            familyRepository.ensureUserAccount(currentUserName, locale = _activeLocale.value)
+            if (preLoginPendingLocale) {
+                familyRepository.updateUserPreferences(locale = _activeLocale.value)
+                onPreLoginLocaleCommitted()
+            }
         }
     }
 
@@ -440,7 +452,8 @@ class BabaWorkspaceViewModel(
                     userPrompt = sampleQuestion,
                     digitalBabaIdentity = draftIdentity.copy(status = "approved"),
                     allMemories = data.memories,
-                    allGuidance = data.guidanceList
+                    allGuidance = data.guidanceList,
+                    preferredLocale = _activeLocale.value
                 )
                 _previewResponse.value = "[${res.response.identityMode.label} | ${res.response.sourceType.label}]\n${res.response.responseText}"
             } catch (e: TimeoutCancellationException) {
@@ -829,7 +842,8 @@ class BabaWorkspaceViewModel(
                     userPrompt = prompt,
                     digitalBabaIdentity = null,
                     allMemories = emptyList(),
-                    allGuidance = emptyList()
+                    allGuidance = emptyList(),
+                    preferredLocale = _activeLocale.value
                 )
                 messagingHubRepository.appendPrivateMessage(
                     conversationId = WIFE_PRIVATE_CONV_ID,
@@ -933,7 +947,8 @@ class BabaWorkspaceViewModel(
                     userPrompt = prompt,
                     digitalBabaIdentity = approvedIdentity,
                     allMemories = data.memories,
-                    allGuidance = data.guidanceList
+                    allGuidance = data.guidanceList,
+                    preferredLocale = _activeLocale.value
                 )
 
                 messagingHubRepository.appendAiTurn(
@@ -1107,13 +1122,66 @@ class BabaWorkspaceViewModel(
     }
 
     fun updateLanguage(context: Context, localeCode: String) {
+        val normalized = AppLocaleHelper.applyLocale(context, localeCode, markPreLoginPending = false)
+        _activeLocale.value = normalized
+        onLocaleChanged(normalized)
+        val lang = AppLanguage.fromCode(normalized)
+        _statusBanner.value = "${lang.nativeName} (${lang.englishName})"
         viewModelScope.launch {
-            familyRepository.updateUserPreferences(locale = localeCode)
+            familyRepository.updateUserPreferences(locale = normalized)
+        }
+    }
+
+    fun switchActiveFamily(family: FamilyWorkspace) {
+        viewModelScope.launch {
+            familyRepository.updateUserPreferences(activeFamilyId = family.id)
                 .onSuccess {
-                    AppLocaleHelper.applyLocale(context, localeCode)
-                    _statusBanner.value = if (localeCode == "ar") "تم التبديل إلى اللغة العربية." else "Language switched to English."
+                    _statusBanner.value = "${family.name} active."
+                }
+                .onFailure {
+                    _statusBanner.value = it.localizedMessage ?: "Failed to switch family workspace."
                 }
         }
+    }
+
+    fun toggleMemberStatus(family: FamilyWorkspace, targetMember: FamilyMember) {
+        if (targetMember.uid == currentUserId) {
+            _statusBanner.value = "You cannot suspend your own active admin session."
+            return
+        }
+        val nextStatus = if (targetMember.membershipStatus == "active") "suspended" else "active"
+        val nextConsent = if (nextStatus == "active") "granted" else "revoked"
+        viewModelScope.launch {
+            familyRepository.updateFamilyMemberControl(
+                familyId = family.id,
+                memberUid = targetMember.uid,
+                consentState = nextConsent,
+                membershipStatus = nextStatus
+            ).onSuccess {
+                governanceRepository.appendAuditLog(
+                    familyId = family.id,
+                    action = "MEMBER_${nextStatus.uppercase()}",
+                    resourceType = "members",
+                    resourceId = targetMember.uid,
+                    outcome = "allowed",
+                    adultUids = family.adultUids
+                )
+                _statusBanner.value = "${targetMember.displayName}: $nextStatus."
+            }.onFailure {
+                _statusBanner.value = it.localizedMessage ?: "Failed to update member status."
+            }
+        }
+    }
+
+    fun sendSafeCheckInPulse(family: FamilyWorkspace, member: FamilyMember, note: String) {
+        sendFamilyMessage(
+            family = family,
+            member = member,
+            text = note,
+            recipientScope = "family",
+            selectedRecipientUids = family.memberUids,
+            isVoiceNote = false
+        )
     }
 
     fun switchPlan(family: FamilyWorkspace, planId: String) {

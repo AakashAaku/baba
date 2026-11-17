@@ -1,13 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BABA</string>
-    <string name="tagline">تواصل عائلي دافئ وشفاف</string>
+    <string name="tagline">تواصل عائلي دافئ وشفاف عبر المسافات</string>
+    <string name="label_digital_baba">الأب الرقمي</string>
+    <string name="label_baba_companion">رفيق BABA</string>
+    <string name="label_real_baba">الأب الحقيقي</string>
     <string name="disclosure_digital_baba">نسخة ذكاء اصطناعي لوالدك، مبنية على معلومات وافق عليها بنفسه.</string>
     <string name="disclosure_baba_companion">أنا BABA، مساعد ذكاء اصطناعي مستقل.</string>
     <string name="disclosure_real_baba">رسالة بشرية حقيقية وموثقة.</string>
     <string name="sign_in_google">تسجيل الدخول عبر Google</string>
+    <string name="sign_out">تسجيل الخروج</string>
+    <string name="select_language_title">اختر لغة عائلتك</string>
+    <string name="select_language_subtitle">اختر اللغة قبل أو بعد تسجيل الدخول ليشعر الوالدان والأبناء بالراحة.</string>
+    <string name="hybrid_identity_title">معايير الصدق والهوية الهجينة</string>
+    <string name="hybrid_identity_body">لا يزيف BABA كلمات الأب أو صوته أبداً. كل تفاعل يوضح الفرق بين الأنماط الثلاثة:</string>
     <string name="nav_father">الأب</string>
     <string name="nav_wife">الزوجة</string>
     <string name="nav_kids">الأطفال</string>
     <string name="nav_hub">العائلة</string>
     <string name="nav_safety">الأمان</string>
+
+    <string name="setup_title">إعداد عائلة BABA</string>
+    <string name="setup_welcome_prefix">مرحباً</string>
+    <string name="setup_subtitle">أنشئ مساحة عائلية محمية بصفتك أباً أو زوجة، أو اقبل دعوة عائلية.</string>
+    <string name="create_workspace_title">إنشاء مساحة العائلة</string>
+    <string name="workspace_name_label">اسم العائلة</string>
+    <string name="your_role_label">دورك</string>
+    <string name="child_policy_note">تُضاف حسابات الأطفال فقط بموافقة صريحة من أحد الوالدين أو الأوصياء البالغين.</string>
+    <string name="create_workspace_button">إنشاء المساحة والموافقة</string>
+    <string name="pending_invites_title">الدعوات المعلقة</string>
+    <string name="no_pending_invites">لا توجد دعوات معلقة</string>
+    <string name="no_pending_invites_desc">إذا أرسل أحد الوالدين دعوة لبريدك الإلكتروني في Google، فستظهر هنا تلقائياً.</string>
+    <string name="accept_join_button">قبول والانضمام للعائلة</string>
+
+    <string name="father_tab_identity">الهوية</string>
+    <string name="father_tab_memories">الذكريات</string>
+    <string name="father_tab_guidance">توجيه مباشر</string>
+    <string name="father_tab_real_baba">الأب الحقيقي</string>
+    <string name="father_tab_members">العائلة والأطفال</string>
+    <string name="sent_invitations_title">الدعوات المرسلة</string>
+    <string name="action_share_invite">مشاركة الدعوة</string>
+    <string name="action_revoke">إلغاء</string>
+
+    <string name="wife_tab_companion">الرفيق الخاص</string>
+    <string name="wife_tab_digital_baba">الأب الرقمي</string>
+    <string name="wife_tab_planning">التخطيط المشترك</string>
+
+    <string name="kids_tab_digital_baba">الأب الرقمي</string>
+    <string name="kids_tab_storyland">عالم القصص</string>
+    <string name="kids_tab_learning">التعلم</string>
+    <string name="kids_tab_real_baba">الأب الحقيقي</string>
+    <string name="kids_tab_memories">الذكريات</string>
+    <string name="kids_help_button">مساعدة</string>
+    <string name="kids_help_dialog_title">هل تحتاج إلى مساعدة؟</string>
+    <string name="kids_help_dialog_body">أخبر شخصاً بالغاً موثوقاً في عائلتك فوراً. يتم تسجيل تنبيه أمان موجز فقط لمساعدتك.</string>
+    <string name="kids_help_send">إرسال تنبيه مساعدة</string>
+
+    <string name="hub_subtitle">الجدول العائلي المشترك والأوقات المحلية والرسائل</string>
+    <string name="hub_distance_bridge_title">جسر المسافة — وقت البيت ووقت العمل</string>
+    <string name="hub_home_time_label">الوقت المحلي للبيت</string>
+    <string name="hub_abroad_time_label">وقت الأب في الغربة</string>
+    <string name="hub_checkin_button">إرسال رسالة اطمئنان</string>
+    <string name="hub_request_call_button">جدولة مكالمة فيديو</string>
+    <string name="hub_send_note_title">إرسال رسالة أو صوت حقيقي</string>
+    <string name="hub_send_note_button">نشر رسالة بشرية موثقة</string>
+    <string name="hub_recent_messages_title">أحدث رسائل العائلة</string>
+    <string name="hub_calendar_title">التقويم العائلي المشترك</string>
+    <string name="hub_members_title">أفراد العائلة</string>
+    <string name="hub_switch_workspace">تبديل مساحة العائلة</string>
+
+    <string name="gov_title">الأمان والخصوصية والحوكمة</string>
+    <string name="gov_privacy_banner">ضمان العزل والخصوصية: تعرض الإدارة تنبيهات الأمان والموافقات وسجلات التدقيق فقط. محادثات الزوجة الخاصة تبقى سرية تماماً.</string>
+    <string name="gov_quiet_hours_title">حماية ساعات الهدوء</string>
+    <string name="gov_quiet_hours_desc">إيقاف التنبيهات غير العاجلة خلال ساعات الليل.</string>
+    <string name="gov_language_title">اللغة / Language</string>
+    <string name="gov_plan_quota_title">الخطة وحصص الاستخدام</string>
+    <string name="gov_consents_title">سجلات الموافقة والأعضاء</string>
+    <string name="gov_export_delete_title">تصدير البيانات وطلبات الحذف</string>
+    <string name="gov_safety_queue_title">تنبيهات الأمان</string>
+    <string name="gov_audit_title">سجل التدقيق غير القابل للتعديل</string>
+
+    <string name="action_save">حفظ</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_close">إغلاق</string>
+    <string name="loading_workspace">جاري تحميل مساحة عائلة BABA...</string>
 </resources>

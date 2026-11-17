@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,13 +20,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -37,10 +40,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,9 +51,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.example.R
 import com.example.ai.OrchestratorTaskType
+import com.example.core.VoiceRecorderHelper
 import com.example.domain.model.AiTurn
 import com.example.domain.model.IdentityMode
 import com.example.domain.model.SourceType
@@ -59,6 +67,8 @@ import com.example.ui.components.ChatComposerBar
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.ModeDisclosureHeader
 import com.example.ui.components.StatusBannerBar
+import com.example.ui.components.VoiceNoteControlRow
+import com.example.ui.theme.AlertCoral
 import com.example.ui.viewmodel.BabaWorkspaceData
 import com.example.ui.viewmodel.BabaWorkspaceViewModel
 
@@ -72,8 +82,13 @@ fun WifeScreen(
     statusBanner: String?
 ) {
     val family = data.activeFamily ?: return
+    val member = data.currentMember ?: return
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Private Companion", "Digital Baba", "Shared Planning")
+    val tabs = listOf(
+        stringResource(R.string.wife_tab_companion),
+        stringResource(R.string.wife_tab_digital_baba),
+        stringResource(R.string.wife_tab_planning)
+    )
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -236,7 +251,33 @@ fun WifeScreen(
                     var eventDate by remember { mutableStateOf("") }
                     var eventDesc by remember { mutableStateOf("") }
                     var eventChildVisible by remember { mutableStateOf(true) }
-                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val context = LocalContext.current
+                    val recorderHelper = remember(context) { VoiceRecorderHelper(context) }
+                    DisposableEffect(recorderHelper) {
+                        onDispose { recorderHelper.release() }
+                    }
+                    var isRecording by remember { mutableStateOf(false) }
+                    var isPlaying by remember { mutableStateOf(false) }
+                    var recordedPath by remember { mutableStateOf("") }
+                    var recordedDurationSec by remember { mutableStateOf(0L) }
+                    var wifeVoiceText by remember { mutableStateOf("") }
+                    var wifeVoiceError by remember { mutableStateOf<String?>(null) }
+
+                    val micLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission()
+                    ) { granted ->
+                        if (granted) {
+                            recorderHelper.startRecording()
+                                .onSuccess {
+                                    isRecording = true
+                                    wifeVoiceError = null
+                                }
+                                .onFailure { wifeVoiceError = it.localizedMessage }
+                        } else {
+                            wifeVoiceError = "Microphone permission is required to record a genuine human voice message."
+                        }
+                    }
+
                     val wifePhotoPicker = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.PickVisualMedia()
                     ) { uri ->
@@ -264,6 +305,106 @@ fun WifeScreen(
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Mic, contentDescription = "Send genuine voice note")
+                                    Text("Send Genuine Voice / Heartfelt Note", style = MaterialTheme.typography.titleMedium)
+                                }
+                                VoiceNoteControlRow(
+                                    isRecording = isRecording,
+                                    recordedDurationSec = recordedDurationSec,
+                                    hasRecording = recordedPath.isNotBlank(),
+                                    isPlaying = isPlaying,
+                                    onToggleRecord = {
+                                        if (isRecording) {
+                                            val result = recorderHelper.stopRecording()
+                                            isRecording = false
+                                            if (result != null) {
+                                                recordedPath = result.first
+                                                recordedDurationSec = result.second
+                                            }
+                                        } else {
+                                            val hasMic = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (hasMic) {
+                                                recorderHelper.startRecording()
+                                                    .onSuccess {
+                                                        isRecording = true
+                                                        wifeVoiceError = null
+                                                    }
+                                                    .onFailure { wifeVoiceError = it.localizedMessage }
+                                            } else {
+                                                micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                            }
+                                        }
+                                    },
+                                    onTogglePlay = {
+                                        if (isPlaying) {
+                                            recorderHelper.stopPlayback()
+                                            isPlaying = false
+                                        } else if (recordedPath.isNotBlank()) {
+                                            isPlaying = true
+                                            recorderHelper.playFile(
+                                                path = recordedPath,
+                                                onComplete = { isPlaying = false },
+                                                onError = { msg ->
+                                                    isPlaying = false
+                                                    wifeVoiceError = msg
+                                                }
+                                            )
+                                        }
+                                    }
+                                )
+                                if (!wifeVoiceError.isNullOrBlank()) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(Icons.Default.WarningAmber, contentDescription = "Audio error", tint = AlertCoral)
+                                        Text(wifeVoiceError.orEmpty(), style = MaterialTheme.typography.bodySmall, color = AlertCoral)
+                                    }
+                                }
+                                OutlinedTextField(
+                                    value = wifeVoiceText,
+                                    onValueChange = { wifeVoiceText = it },
+                                    label = { Text("Update or Voice Note for Husband / Family") },
+                                    modifier = Modifier.fillMaxWidth().testTag("wife_voice_note_input")
+                                )
+                                Button(
+                                    onClick = {
+                                        viewModel.sendFamilyMessage(
+                                            family = family,
+                                            member = member,
+                                            text = wifeVoiceText,
+                                            recipientScope = "family",
+                                            selectedRecipientUids = family.memberUids,
+                                            isVoiceNote = recordedPath.isNotBlank(),
+                                            audioDurationSec = recordedDurationSec,
+                                            localAudioPath = recordedPath
+                                        )
+                                        wifeVoiceText = ""
+                                        recordedPath = ""
+                                        recordedDurationSec = 0L
+                                    },
+                                    modifier = Modifier.fillMaxWidth().testTag("wife_send_voice_note_button")
+                                ) {
+                                    Text(stringResource(R.string.hub_send_note_button))
+                                }
+                            }
+                        }
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

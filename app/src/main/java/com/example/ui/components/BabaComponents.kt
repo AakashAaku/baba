@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -37,6 +38,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,8 +55,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.R
+import com.example.core.AppLanguage
 import com.example.core.MediaValidator
 import com.example.domain.model.AiTurn
 import com.example.domain.model.FamilyMedia
@@ -70,6 +75,49 @@ import com.example.ui.theme.TrustNavyDark
 import com.example.ui.theme.WarmGold
 import com.example.ui.theme.WarmGoldDeep
 import com.example.ui.theme.WarmGoldSoft
+
+@Composable
+fun IdentityMode.localizedLabel(): String = when (this) {
+    IdentityMode.DIGITAL_BABA -> stringResource(R.string.label_digital_baba)
+    IdentityMode.BABA_COMPANION -> stringResource(R.string.label_baba_companion)
+    IdentityMode.REAL_BABA -> stringResource(R.string.label_real_baba)
+}
+
+@Composable
+fun IdentityMode.localizedDisclosure(): String = when (this) {
+    IdentityMode.DIGITAL_BABA -> stringResource(R.string.disclosure_digital_baba)
+    IdentityMode.BABA_COMPANION -> stringResource(R.string.disclosure_baba_companion)
+    IdentityMode.REAL_BABA -> stringResource(R.string.disclosure_real_baba)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun LanguageSelectorFlowRow(
+    selectedCode: String,
+    onSelectLocale: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val active = AppLanguage.fromCode(selectedCode)
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        AppLanguage.entries.forEach { lang ->
+            val labelText = if (lang == AppLanguage.EN) {
+                "English (Default)"
+            } else {
+                "${lang.nativeName} • ${lang.regionLabel}"
+            }
+            FilterChip(
+                selected = active == lang,
+                onClick = { onSelectLocale(lang.code) },
+                label = { Text(labelText) },
+                modifier = Modifier.testTag("locale_${lang.code}_chip")
+            )
+        }
+    }
+}
 
 @Composable
 fun IdentityModeBadge(
@@ -93,6 +141,7 @@ fun IdentityModeBadge(
             Icons.Default.VerifiedUser
         )
     }
+    val localizedName = mode.localizedLabel()
     Surface(
         modifier = modifier,
         color = containerColor,
@@ -106,12 +155,12 @@ fun IdentityModeBadge(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = mode.label,
+                contentDescription = localizedName,
                 tint = contentColor,
                 modifier = Modifier.size(15.dp)
             )
             Text(
-                text = mode.label,
+                text = localizedName,
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor,
                 fontWeight = FontWeight.SemiBold
@@ -159,7 +208,7 @@ fun ModeDisclosureHeader(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = mode.label.uppercase(),
+                            text = mode.localizedLabel().uppercase(),
                             style = MaterialTheme.typography.labelSmall,
                             color = PureWhite,
                             fontWeight = FontWeight.Bold
@@ -181,7 +230,7 @@ fun ModeDisclosureHeader(
                 }
             }
             Text(
-                text = mode.disclosureText,
+                text = mode.localizedDisclosure(),
                 style = MaterialTheme.typography.titleMedium,
                 color = PureWhite
             )

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsPaused
@@ -46,10 +47,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.domain.model.PlanQuotaTier
 import com.example.ui.components.EmptyStateCard
+import com.example.ui.components.LanguageSelectorFlowRow
 import com.example.ui.components.StatusBannerBar
 import com.example.ui.theme.AlertCoral
 import com.example.ui.theme.ConnectionMintSoft
@@ -67,7 +72,8 @@ fun GovernanceAdminScreen(
     val family = data.activeFamily ?: return
     val context = LocalContext.current
     val quietHours = data.userAccount?.quietHoursEnabled ?: false
-    val currentLocale = data.userAccount?.locale ?: "en"
+    val vmLocale by viewModel.activeLocale.collectAsStateWithLifecycle()
+    val currentLocale = data.userAccount?.locale?.takeIf { it.isNotBlank() } ?: vmLocale
     var requestNote by remember { mutableStateOf("") }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
@@ -108,7 +114,9 @@ fun GovernanceAdminScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             }
         )
     }
@@ -131,7 +139,7 @@ fun GovernanceAdminScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(Icons.Default.AdminPanelSettings, contentDescription = "Governance & safety")
-                Text("Safety, Privacy & Governance", style = MaterialTheme.typography.headlineLarge)
+                Text(stringResource(R.string.gov_title), style = MaterialTheme.typography.headlineLarge)
             }
 
             Surface(
@@ -146,10 +154,34 @@ fun GovernanceAdminScreen(
                 ) {
                     Icon(Icons.Default.Lock, contentDescription = "Private boundary", tint = TrustNavyDark)
                     Text(
-                        text = "Privacy Isolation Guarantee: Admin governance displays safety escalation metadata, consents, and audit logs only. Private Wife Companion conversations remain invisible here.",
+                        text = stringResource(R.string.gov_privacy_banner),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TrustNavyDark
                     )
+                }
+            }
+
+            if (data.families.size > 1) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(stringResource(R.string.hub_switch_workspace), style = MaterialTheme.typography.titleMedium)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            data.families.forEach { fam ->
+                                FilterChip(
+                                    selected = fam.id == family.id,
+                                    onClick = { viewModel.switchActiveFamily(fam) },
+                                    label = { Text(fam.name) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -172,9 +204,9 @@ fun GovernanceAdminScreen(
                     ) {
                         Icon(Icons.Default.NotificationsPaused, contentDescription = "Quiet hours")
                         Column {
-                            Text("Quiet Hours Protection", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.gov_quiet_hours_title), style = MaterialTheme.typography.titleMedium)
                             Text(
-                                text = "Pause non-urgent family prompts & AI reminders overnight.",
+                                text = stringResource(R.string.gov_quiet_hours_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -202,22 +234,13 @@ fun GovernanceAdminScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(Icons.Default.Language, contentDescription = "Language preference")
-                        Text("Language / اللغة", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.gov_language_title), style = MaterialTheme.typography.titleMedium)
                     }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = currentLocale != "ar",
-                            onClick = { viewModel.updateLanguage(context, "en") },
-                            label = { Text("English") },
-                            modifier = Modifier.testTag("locale_en_chip")
-                        )
-                        FilterChip(
-                            selected = currentLocale == "ar",
-                            onClick = { viewModel.updateLanguage(context, "ar") },
-                            label = { Text("العربية") },
-                            modifier = Modifier.testTag("locale_ar_chip")
-                        )
-                    }
+                    LanguageSelectorFlowRow(
+                        selectedCode = currentLocale,
+                        onSelectLocale = { code -> viewModel.updateLanguage(context, code) },
+                        modifier = Modifier.testTag("postlogin_language_selector")
+                    )
                 }
             }
 
@@ -240,7 +263,10 @@ fun GovernanceAdminScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(Icons.Default.DataUsage, contentDescription = "Plan & quota metering")
-                            Text("Plan & Usage Quotas ($periodKey)", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "${stringResource(R.string.gov_plan_quota_title)} ($periodKey)",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                         Text(
                             text = "${tier.displayName} (${tier.monthlyPriceLabel})",
@@ -271,7 +297,53 @@ fun GovernanceAdminScreen(
                 }
             }
 
-            Text("Consent Records (${data.consents.size})", style = MaterialTheme.typography.titleLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Default.Group, contentDescription = "Member access oversight")
+                Text(
+                    "${stringResource(R.string.gov_consents_title)} (${data.members.size})",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+            data.members.forEach { m ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("${m.displayName} (${m.role.uppercase()})", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                text = "Status: ${m.membershipStatus.uppercase()} • Consent: ${m.consentState.uppercase()} • Age: ${m.ageBand}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (m.uid != data.currentMember?.uid) {
+                            TextButton(
+                                onClick = { viewModel.toggleMemberStatus(family, m) },
+                                modifier = Modifier.testTag("toggle_member_${m.uid}")
+                            ) {
+                                Text(
+                                    text = if (m.membershipStatus == "active") "Suspend" else "Reactivate",
+                                    color = if (m.membershipStatus == "active") AlertCoral else MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text("Consent Ledger (${data.consents.size})", style = MaterialTheme.typography.titleMedium)
             if (data.consents.isEmpty()) {
                 EmptyStateCard(
                     title = "No consent records yet",
@@ -321,7 +393,7 @@ fun GovernanceAdminScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(Icons.Default.Download, contentDescription = "Data export & deletion")
-                        Text("Privacy Export & Deletion Requests", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.gov_export_delete_title), style = MaterialTheme.typography.titleMedium)
                     }
                     OutlinedTextField(
                         value = requestNote,
@@ -346,7 +418,10 @@ fun GovernanceAdminScreen(
                                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
                                     runCatching {
-                                        context.startActivity(Intent.createChooser(shareIntent, "Share or Save BABA JSON Export"))
+                                        val chooser = Intent.createChooser(shareIntent, "Share or Save BABA JSON Export").apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(chooser)
                                     }
                                 }
                                 requestNote = ""
@@ -377,7 +452,10 @@ fun GovernanceAdminScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(Icons.Default.Shield, contentDescription = "Safety queue")
-                Text("Safety Escalation Queue (${data.safetyEvents.size})", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "${stringResource(R.string.gov_safety_queue_title)} (${data.safetyEvents.size})",
+                    style = MaterialTheme.typography.titleLarge
+                )
             }
             if (data.safetyEvents.isEmpty()) {
                 EmptyStateCard(
@@ -415,7 +493,10 @@ fun GovernanceAdminScreen(
                 }
             }
 
-            Text("Immutable Audit Log (${data.auditLogs.size})", style = MaterialTheme.typography.titleLarge)
+            Text(
+                "${stringResource(R.string.gov_audit_title)} (${data.auditLogs.size})",
+                style = MaterialTheme.typography.titleLarge
+            )
             data.auditLogs.take(20).forEach { log ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),

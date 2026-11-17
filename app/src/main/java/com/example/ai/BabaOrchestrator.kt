@@ -36,7 +36,8 @@ class BabaOrchestrator(
         userPrompt: String,
         digitalBabaIdentity: AiIdentity?,
         allMemories: List<FamilyMemory>,
-        allGuidance: List<FamilyGuidance>
+        allGuidance: List<FamilyGuidance>,
+        preferredLocale: String = "en"
     ): OrchestrationResult {
         val requestedMode = when (taskType) {
             OrchestratorTaskType.DIGITAL_BABA_CHAT -> IdentityMode.DIGITAL_BABA
@@ -94,17 +95,28 @@ class BabaOrchestrator(
             OrchestratorTaskType.DIGITAL_BABA_CHAT -> {
                 "FatherIdentityAgent" to SpecialistAgentPrompts.buildFatherIdentityPrompt(
                     identity = requireNotNull(digitalBabaIdentity),
-                    context = permittedContext
+                    context = permittedContext,
+                    preferredLocale = preferredLocale
                 )
             }
             OrchestratorTaskType.COMPANION_CHAT -> {
-                "FamilyCompanionAgent" to SpecialistAgentPrompts.buildFamilyCompanionPrompt(requester.role)
+                "FamilyCompanionAgent" to SpecialistAgentPrompts.buildFamilyCompanionPrompt(
+                    requesterRole = requester.role,
+                    preferredLocale = preferredLocale
+                )
             }
             OrchestratorTaskType.KIDS_LEARNING -> {
-                "ChildrenLearningAgent" to SpecialistAgentPrompts.buildChildrenLearningPrompt(ageBand)
+                "ChildrenLearningAgent" to SpecialistAgentPrompts.buildChildrenLearningPrompt(
+                    ageBand = ageBand,
+                    preferredLocale = preferredLocale
+                )
             }
             OrchestratorTaskType.KIDS_STORYLAND -> {
-                "StorytellingAgent" to SpecialistAgentPrompts.buildStorytellingPrompt(ageBand, permittedContext)
+                "StorytellingAgent" to SpecialistAgentPrompts.buildStorytellingPrompt(
+                    ageBand = ageBand,
+                    context = permittedContext,
+                    preferredLocale = preferredLocale
+                )
             }
         }
 

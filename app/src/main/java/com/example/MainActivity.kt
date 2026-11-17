@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.FamilyRestroom
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsPaused
 import androidx.compose.material.icons.filled.Psychology
@@ -43,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -52,15 +55,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.core.AppLanguage
+import com.example.core.AppLocaleHelper
+import com.example.core.LocalePreferenceStore
 import com.example.core.attemptAutoSignIn
 import com.example.core.authStateFlow
 import com.example.core.configureAppCheck
@@ -72,6 +81,7 @@ import com.example.data.repository.IdentityMemoryRepository
 import com.example.data.repository.MessagingHubRepository
 import com.example.domain.model.AppSurface
 import com.example.domain.model.FamilyRole
+import com.example.ui.components.LanguageSelectorFlowRow
 import com.example.ui.screens.AuthScreen
 import com.example.ui.screens.FamilyHubScreen
 import com.example.ui.screens.FamilySetupScreen
@@ -91,6 +101,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         configureAppCheck(this, intent)
+        val initialLocale = LocalePreferenceStore.getSavedLocale(this)
+        AppLocaleHelper.applyLocale(this, initialLocale, markPreLoginPending = false)
         enableEdgeToEdge()
         setContent {
             BabaTheme {
@@ -101,10 +113,34 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+private fun LocalizedBabaEnvironment(
+    baseContext: Context,
+    localeCode: String,
+    content: @Composable () -> Unit
+) {
+    val lang = AppLanguage.fromCode(localeCode)
+    val localizedCtx = remember(baseContext, lang.code) {
+        AppLocaleHelper.localizedContext(baseContext, lang.code)
+    }
+    val direction = if (lang.isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
+    CompositionLocalProvider(
+        LocalContext provides localizedCtx,
+        LocalConfiguration provides localizedCtx.resources.configuration,
+        LocalLayoutDirection provides direction
+    ) {
+        content()
+    }
+}
+
+@Composable
 private fun BabaRootApp() {
-    val context = LocalContext.current
+    val hostContext = LocalContext.current
     val scope = rememberCoroutineScope()
-    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val credentialManager = remember(hostContext) { CredentialManager.create(hostContext) }
+
+    var selectedLocale by remember {
+        mutableStateOf(LocalePreferenceStore.getSavedLocale(hostContext))
+    }
 
     val currentUser by Firebase.auth.authStateFlow()
         .collectAsStateWithLifecycle(initialValue = Firebase.auth.currentUser)
@@ -116,7 +152,7 @@ private fun BabaRootApp() {
             kotlinx.coroutines.delay(400L)
             if (Firebase.auth.currentUser == null) {
                 attemptAutoSignIn(
-                    context = context,
+                    context = hostContext,
                     credentialManager = credentialManager,
                     onAuthSuccess = { authError = null },
                     onUnauthenticated = {},
@@ -126,35 +162,45 @@ private fun BabaRootApp() {
         }
     }
 
-    val user = currentUser
-    if (user == null) {
-        AuthScreen(
-            isSigningIn = isSigningIn,
-            errorMessage = authError,
-            onGoogleSignIn = {
-                isSigningIn = true
-                authError = null
-                onGoogleSignInClicked(
-                    context = context,
-                    credentialManager = credentialManager,
-                    onAuthSuccess = { isSigningIn = false },
-                    onAuthError = { err ->
-                        isSigningIn = false
-                        authError = err
-                    },
-                    onAuthCancelled = { isSigningIn = false },
-                    scope = scope
-                )
-            }
-        )
-    } else {
-        key(user.uid) {
-            AuthenticatedBabaWorkspace(
-                user = user,
-                onSignOut = {
-                    signOut(credentialManager = credentialManager, scope = scope)
+    LocalizedBabaEnvironment(baseContext = hostContext, localeCode = selectedLocale) {
+        val user = currentUser
+        if (user == null) {
+            AuthScreen(
+                isSigningIn = isSigningIn,
+                errorMessage = authError,
+                selectedLocale = selectedLocale,
+                onSelectLocale = { code ->
+                    val applied = AppLocaleHelper.applyLocale(hostContext, code, markPreLoginPending = true)
+                    selectedLocale = applied
+                },
+                onGoogleSignIn = {
+                    isSigningIn = true
+                    authError = null
+                    onGoogleSignInClicked(
+                        context = hostContext,
+                        credentialManager = credentialManager,
+                        onAuthSuccess = { isSigningIn = false },
+                        onAuthError = { err ->
+                            isSigningIn = false
+                            authError = err
+                        },
+                        onAuthCancelled = { isSigningIn = false },
+                        scope = scope
+                    )
                 }
             )
+        } else {
+            key(user.uid) {
+                AuthenticatedBabaWorkspace(
+                    hostContext = hostContext,
+                    user = user,
+                    activeAppLocale = selectedLocale,
+                    onAppLocaleChanged = { newCode -> selectedLocale = newCode },
+                    onSignOut = {
+                        signOut(credentialManager = credentialManager, scope = scope)
+                    }
+                )
+            }
         }
     }
 }
@@ -162,10 +208,16 @@ private fun BabaRootApp() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AuthenticatedBabaWorkspace(
+    hostContext: Context,
     user: FirebaseUser,
+    activeAppLocale: String,
+    onAppLocaleChanged: (String) -> Unit,
     onSignOut: () -> Unit
 ) {
-    val appContext = LocalContext.current.applicationContext
+    val appContext = hostContext.applicationContext
+    val preLoginPending = remember { LocalePreferenceStore.hasPendingPreLoginSelection(appContext) }
+    val initialSavedLocale = remember { LocalePreferenceStore.getSavedLocale(appContext) }
+
     val viewModel: BabaWorkspaceViewModel = viewModel(
         key = user.uid,
         factory = viewModelFactory {
@@ -177,7 +229,13 @@ private fun AuthenticatedBabaWorkspace(
                     familyRepository = FamilyRepository(appContext),
                     identityMemoryRepository = IdentityMemoryRepository(appContext),
                     messagingHubRepository = MessagingHubRepository(appContext),
-                    governanceRepository = GovernanceRepository(appContext)
+                    governanceRepository = GovernanceRepository(appContext),
+                    initialLocale = initialSavedLocale,
+                    preLoginPendingLocale = preLoginPending,
+                    onPreLoginLocaleCommitted = {
+                        LocalePreferenceStore.clearPendingPreLoginSelection(appContext)
+                    },
+                    onLocaleChanged = onAppLocaleChanged
                 )
             }
         }
@@ -186,10 +244,53 @@ private fun AuthenticatedBabaWorkspace(
     val workspaceState by viewModel.workspaceState.collectAsStateWithLifecycle()
     val selectedSurfaceState by viewModel.selectedSurface.collectAsStateWithLifecycle()
     val supervisedChildId by viewModel.supervisedChildId.collectAsStateWithLifecycle()
+    val vmLocale by viewModel.activeLocale.collectAsStateWithLifecycle()
     val aiBusy by viewModel.aiBusy.collectAsStateWithLifecycle()
     val aiError by viewModel.aiError.collectAsStateWithLifecycle()
     val statusBanner by viewModel.statusBanner.collectAsStateWithLifecycle()
     val previewResponse by viewModel.previewResponse.collectAsStateWithLifecycle()
+
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    // Sync locale from Firestore UserAccount if the user had no pending pre-login override
+    val accountLocale = (workspaceState as? UiState.Success<BabaWorkspaceData>)?.data?.userAccount?.locale
+    LaunchedEffect(accountLocale) {
+        if (!accountLocale.isNullOrBlank() &&
+            !LocalePreferenceStore.hasPendingPreLoginSelection(appContext) &&
+            AppLanguage.fromCode(accountLocale).code != activeAppLocale
+        ) {
+            val synced = AppLocaleHelper.applyLocale(hostContext, accountLocale, markPreLoginPending = false)
+            onAppLocaleChanged(synced)
+        }
+    }
+
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(stringResource(R.string.select_language_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = stringResource(R.string.select_language_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    LanguageSelectorFlowRow(
+                        selectedCode = vmLocale,
+                        onSelectLocale = { code ->
+                            viewModel.updateLanguage(hostContext, code)
+                            showLanguageDialog = false
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
+    }
 
     when (val state = workspaceState) {
         is UiState.Loading -> {
@@ -199,7 +300,7 @@ private fun AuthenticatedBabaWorkspace(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     CircularProgressIndicator()
-                    Text("Loading BABA Family Workspace...")
+                    Text(stringResource(R.string.loading_workspace))
                 }
             }
         }
@@ -226,7 +327,7 @@ private fun AuthenticatedBabaWorkspace(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Button(onClick = onSignOut) {
-                        Text("Sign Out")
+                        Text(stringResource(R.string.sign_out))
                     }
                 }
             }
@@ -239,13 +340,25 @@ private fun AuthenticatedBabaWorkspace(
                     contentWindowInsets = WindowInsets.safeDrawing,
                     topBar = {
                         TopAppBar(
-                            title = { Text("BABA Family Setup") },
+                            title = { Text(stringResource(R.string.setup_title)) },
                             actions = {
+                                IconButton(
+                                    onClick = { showLanguageDialog = true },
+                                    modifier = Modifier.testTag("topbar_language_button")
+                                ) {
+                                    Icon(
+                                        Icons.Default.Language,
+                                        contentDescription = stringResource(R.string.select_language_title)
+                                    )
+                                }
                                 IconButton(
                                     onClick = onSignOut,
                                     modifier = Modifier.testTag("sign_out_button")
                                 ) {
-                                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign out")
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Logout,
+                                        contentDescription = stringResource(R.string.sign_out)
+                                    )
                                 }
                             }
                         )
@@ -256,6 +369,8 @@ private fun AuthenticatedBabaWorkspace(
                             displayName = data.userAccount?.displayName ?: user.displayName ?: "Family Member",
                             invitations = data.invitations,
                             statusBanner = statusBanner,
+                            selectedLocale = vmLocale,
+                            onSelectLocale = { code -> viewModel.updateLanguage(hostContext, code) },
                             onDismissBanner = viewModel::clearBanner,
                             onCreateFamily = viewModel::createFamily,
                             onAcceptInvitation = viewModel::acceptInvitation
@@ -337,7 +452,9 @@ private fun AuthenticatedBabaWorkspace(
                             }
                         },
                         confirmButton = {
-                            TextButton(onClick = { showNotificationsDialog = false }) { Text("Close") }
+                            TextButton(onClick = { showNotificationsDialog = false }) {
+                                Text(stringResource(R.string.action_close))
+                            }
                         }
                     )
                 }
@@ -366,6 +483,15 @@ private fun AuthenticatedBabaWorkspace(
                                 ),
                                 actions = {
                                     IconButton(
+                                        onClick = { showLanguageDialog = true },
+                                        modifier = Modifier.testTag("topbar_language_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Language,
+                                            contentDescription = stringResource(R.string.select_language_title)
+                                        )
+                                    }
+                                    IconButton(
                                         onClick = { showNotificationsDialog = true },
                                         modifier = Modifier.testTag("notifications_inbox_button")
                                     ) {
@@ -386,7 +512,10 @@ private fun AuthenticatedBabaWorkspace(
                                         onClick = onSignOut,
                                         modifier = Modifier.testTag("sign_out_button")
                                     ) {
-                                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign out")
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.Logout,
+                                            contentDescription = stringResource(R.string.sign_out)
+                                        )
                                     }
                                 }
                             )

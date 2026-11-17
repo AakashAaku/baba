@@ -411,4 +411,26 @@ class FamilyRepository(
         if (e is CancellationException) throw e
         handleFirestoreError(e, OperationType.UPDATE, "families/$familyId")
     }
+
+    suspend fun updateFamilyMemberControl(
+        familyId: String,
+        memberUid: String,
+        consentState: String,
+        membershipStatus: String
+    ): Result<Unit> = runCatching {
+        requireUserId()
+        db.collection("families").document(familyId)
+            .collection("members").document(memberUid)
+            .update(
+                mapOf(
+                    "consentState" to consentState,
+                    "membershipStatus" to membershipStatus,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            ).await()
+        Unit
+    }.onFailure { e ->
+        if (e is CancellationException) throw e
+        handleFirestoreError(e, OperationType.UPDATE, "families/$familyId/members/$memberUid")
+    }
 }

@@ -54,7 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
@@ -105,7 +105,13 @@ fun KidsScreen(
     }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Digital Baba", "Storyland", "Learning", "Real Baba", "Memories")
+    val tabs = listOf(
+        stringResource(R.string.kids_tab_digital_baba),
+        stringResource(R.string.kids_tab_storyland),
+        stringResource(R.string.kids_tab_learning),
+        stringResource(R.string.kids_tab_real_baba),
+        stringResource(R.string.kids_tab_memories)
+    )
 
     var showReportDialog by remember { mutableStateOf(false) }
     var reportNote by remember { mutableStateOf("") }
@@ -113,11 +119,11 @@ fun KidsScreen(
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
-            title = { Text("Need Help or Feel Uncomfortable?") },
+            title = { Text(stringResource(R.string.kids_help_dialog_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Tell a trusted family adult right away. Only a brief safety alert is logged so they can help you.",
+                        stringResource(R.string.kids_help_dialog_body),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     OutlinedTextField(
@@ -137,11 +143,13 @@ fun KidsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = AlertCoral)
                 ) {
-                    Text("Send Help Alert")
+                    Text(stringResource(R.string.kids_help_send))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showReportDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showReportDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             }
         )
     }
@@ -182,9 +190,9 @@ fun KidsScreen(
                     ),
                     modifier = Modifier.testTag("kids_help_button")
                 ) {
-                    Icon(Icons.Default.ReportProblem, contentDescription = "Need help")
+                    Icon(Icons.Default.ReportProblem, contentDescription = stringResource(R.string.kids_help_button))
                     Spacer(Modifier.padding(horizontal = 3.dp))
-                    Text("Help")
+                    Text(stringResource(R.string.kids_help_button))
                 }
             }
         }
@@ -282,24 +290,53 @@ fun KidsScreen(
                     )
                 }
 
-                2 -> KidsAiChatTab(
-                    mode = IdentityMode.BABA_COMPANION,
-                    subtitle = "Learning Academy adapts explanations & mini-quizzes for Age Band ${effectiveChild.ageBand}.",
-                    turns = data.kidsLearningTurns,
-                    suggestions = listOf(
-                        "Give me a fun science riddle for age ${effectiveChild.ageBand}",
-                        "Explain how fractions work step-by-step",
-                        "Quiz me on space and constellations"
-                    ),
-                    placeholder = "Ask Learning Academy...",
-                    aiBusy = aiBusy,
-                    aiError = aiError,
-                    onDismissError = viewModel::clearAiError,
-                    onSend = { prompt ->
-                        viewModel.sendFamilyAiChat(data, OrchestratorTaskType.KIDS_LEARNING, prompt, effectiveChild)
-                    },
-                    onRequestLiveGuidance = null
-                )
+                2 -> {
+                    var selectedSubject by remember { mutableStateOf("Math") }
+                    val subjectStarters = when (selectedSubject) {
+                        "Math" -> listOf(
+                            "Help me understand fractions step-by-step for age ${effectiveChild.ageBand}",
+                            "Give me a 3-question word problem quiz"
+                        )
+                        "Science" -> listOf(
+                            "Give me a fun science riddle for age ${effectiveChild.ageBand}",
+                            "Explain how water turns into rain"
+                        )
+                        "Reading" -> listOf(
+                            "Help me practice reading comprehension & vocabulary",
+                            "Ask me 3 questions about honesty and kindness"
+                        )
+                        else -> listOf(
+                            "Quiz me on space and constellations",
+                            "Give me a quick 3-question study check"
+                        )
+                    }
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("Math", "Science", "Reading", "Daily Quiz").forEach { subj ->
+                                FilterChip(
+                                    selected = selectedSubject == subj,
+                                    onClick = { selectedSubject = subj },
+                                    label = { Text(subj) }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        KidsAiChatTab(
+                            mode = IdentityMode.BABA_COMPANION,
+                            subtitle = "Learning Academy ($selectedSubject) adapts explanations & mini-quizzes for Age Band ${effectiveChild.ageBand}.",
+                            turns = data.kidsLearningTurns,
+                            suggestions = subjectStarters,
+                            placeholder = "Ask Learning Academy ($selectedSubject)...",
+                            aiBusy = aiBusy,
+                            aiError = aiError,
+                            onDismissError = viewModel::clearAiError,
+                            onSend = { prompt ->
+                                viewModel.sendFamilyAiChat(data, OrchestratorTaskType.KIDS_LEARNING, prompt, effectiveChild)
+                            },
+                            onRequestLiveGuidance = null
+                        )
+                    }
+                }
 
                 3 -> KidsRealBabaMessagesTab(data = data, viewModel = viewModel)
 

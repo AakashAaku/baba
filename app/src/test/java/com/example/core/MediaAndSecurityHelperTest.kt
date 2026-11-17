@@ -99,4 +99,35 @@ class MediaAndSecurityHelperTest {
         assertFalse(permitted.memories.any { it.id == "mem_secret_exact" })
         assertTrue(permitted.memories.isEmpty())
     }
+
+    @Test
+    fun `AppLanguage and LocalePreferenceStore support all six family languages and timezones`() {
+        assertEquals(AppLanguage.EN, AppLanguage.fromCode(null))
+        assertEquals(AppLanguage.EN, AppLanguage.fromCode("en-US"))
+        assertEquals(AppLanguage.NE, AppLanguage.fromCode("ne-NP"))
+        assertEquals(AppLanguage.HI, AppLanguage.fromCode("hi"))
+        assertEquals(AppLanguage.BN, AppLanguage.fromCode("bn-BD"))
+        assertEquals(AppLanguage.UR, AppLanguage.fromCode("ur-PK"))
+        assertEquals(AppLanguage.AR, AppLanguage.fromCode("ar"))
+        assertTrue(AppLanguage.UR.isRtl)
+        assertTrue(AppLanguage.AR.isRtl)
+        assertFalse(AppLanguage.NE.isRtl)
+        assertFalse(AppLanguage.BN.isRtl)
+
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        LocalePreferenceStore.saveLocale(context, "ne", markPreLoginPending = true)
+        assertEquals("ne", LocalePreferenceStore.getSavedLocale(context))
+        assertTrue(LocalePreferenceStore.hasPendingPreLoginSelection(context))
+        LocalePreferenceStore.clearPendingPreLoginSelection(context)
+        assertFalse(LocalePreferenceStore.hasPendingPreLoginSelection(context))
+
+        LocalePreferenceStore.saveWorkTimezone(context, "Asia/Riyadh")
+        LocalePreferenceStore.saveHomeTimezone(context, "Asia/Kathmandu")
+        assertEquals("Asia/Riyadh", LocalePreferenceStore.getWorkTimezone(context))
+        assertEquals("Asia/Kathmandu", LocalePreferenceStore.getHomeTimezone(context, "Asia/Dhaka"))
+
+        val formatted = FamilyTimeZoneHelper.formatLocalTime("Asia/Kathmandu", "en", 1_735_689_600_000L)
+        assertTrue(formatted.isNotBlank())
+        assertEquals("Nepal (Kathmandu)", FamilyTimeZoneHelper.zoneDisplayName("Asia/Kathmandu"))
+    }
 }

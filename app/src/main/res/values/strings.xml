@@ -1,13 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BABA</string>
     <string name="tagline">Family Connection, Transparently Grounded</string>
+    <string name="label_digital_baba">Digital Baba (AI)</string>
+    <string name="label_baba_companion">BABA Companion (AI)</string>
+    <string name="label_real_baba">Real Baba (Human)</string>
     <string name="disclosure_digital_baba">AI version of your father, based on information he approved.</string>
     <string name="disclosure_baba_companion">I am BABA, an AI companion.</string>
     <string name="disclosure_real_baba">Verified human-authored message.</string>
     <string name="sign_in_google">Sign in with Google</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="select_language_title">Choose Your Family Language</string>
+    <string name="select_language_subtitle">Select before or after login so every parent and child feels at home.</string>
+    <string name="hybrid_identity_title">Hybrid Identity &amp; Truthfulness</string>
+    <string name="hybrid_identity_body">BABA never fakes a father\'s words or voice. Every interaction clearly distinguishes between three verified modes:</string>
     <string name="nav_father">Father</string>
     <string name="nav_wife">Wife</string>
     <string name="nav_kids">Kids</string>
     <string name="nav_hub">Hub</string>
     <string name="nav_safety">Safety</string>
+
+    <string name="setup_title">BABA Family Setup</string>
+    <string name="setup_welcome_prefix">Welcome</string>
+    <string name="setup_subtitle">Start a protected family workspace as a Father or Wife, or accept an expiring single-use invitation.</string>
+    <string name="create_workspace_title">Create Family Workspace</string>
+    <string name="workspace_name_label">Family Workspace Name</string>
+    <string name="your_role_label">Your Adult Role</string>
+    <string name="child_policy_note">Child accounts cannot self-create workspaces and are added inside the family by a verified adult with explicit consent.</string>
+    <string name="create_workspace_button">Create Workspace &amp; Consent</string>
+    <string name="pending_invites_title">Pending Invitations</string>
+    <string name="no_pending_invites">No pending invitations</string>
+    <string name="no_pending_invites_desc">If another family adult invited your Google email, their expiring invite will appear here automatically.</string>
+    <string name="accept_join_button">Accept &amp; Join Family</string>
+
+    <string name="father_tab_identity">Identity</string>
+    <string name="father_tab_memories">Memories</string>
+    <string name="father_tab_guidance">Live Guidance</string>
+    <string name="father_tab_real_baba">Real Baba</string>
+    <string name="father_tab_members">Family &amp; Kids</string>
+    <string name="sent_invitations_title">Sent Family Invitations</string>
+    <string name="action_share_invite">Share Invite</string>
+    <string name="action_revoke">Revoke</string>
+
+    <string name="wife_tab_companion">Private Companion</string>
+    <string name="wife_tab_digital_baba">Digital Baba</string>
+    <string name="wife_tab_planning">Shared Planning</string>
+
+    <string name="kids_tab_digital_baba">Digital Baba</string>
+    <string name="kids_tab_storyland">Storyland</string>
+    <string name="kids_tab_learning">Learning</string>
+    <string name="kids_tab_real_baba">Real Baba</string>
+    <string name="kids_tab_memories">Memories</string>
+    <string name="kids_help_button">Help</string>
+    <string name="kids_help_dialog_title">Need Help or Feel Uncomfortable?</string>
+    <string name="kids_help_dialog_body">Tell a trusted family adult right away. Only a brief safety alert is logged so they can help you.</string>
+    <string name="kids_help_send">Send Help Alert</string>
+
+    <string name="hub_subtitle">Shared Family Timeline, Time Zones &amp; Genuine Human Notes</string>
+    <string name="hub_distance_bridge_title">Distance Bridge — Home &amp; Work Time</string>
+    <string name="hub_home_time_label">Family Home Time</string>
+    <string name="hub_abroad_time_label">Father Working Abroad</string>
+    <string name="hub_checkin_button">Send Safe Check-In</string>
+    <string name="hub_request_call_button">Schedule Video Call</string>
+    <string name="hub_send_note_title">Send Genuine Family Note or Voice</string>
+    <string name="hub_send_note_button">Post Verified Human Message</string>
+    <string name="hub_recent_messages_title">Recent Human Family Messages</string>
+    <string name="hub_calendar_title">Shared Family Calendar</string>
+    <string name="hub_members_title">Family Members</string>
+    <string name="hub_switch_workspace">Switch Family Workspace</string>
+
+    <string name="gov_title">Safety, Privacy &amp; Governance</string>
+    <string name="gov_privacy_banner">Privacy Isolation Guarantee: Admin governance displays safety escalation metadata, consents, and audit logs only. Private Wife Companion conversations remain invisible here.</string>
+    <string name="gov_quiet_hours_title">Quiet Hours Protection</string>
+    <string name="gov_quiet_hours_desc">Pause non-urgent family prompts &amp; AI reminders overnight.</string>
+    <string name="gov_language_title">Language / Select Language</string>
+    <string name="gov_plan_quota_title">Plan &amp; Usage Quotas</string>
+    <string name="gov_consents_title">Consent &amp; Member Oversight</string>
+    <string name="gov_export_delete_title">Privacy Export &amp; Deletion Requests</string>
+    <string name="gov_safety_queue_title">Safety Escalation Queue</string>
+    <string name="gov_audit_title">Immutable Audit Log</string>
+
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
+    <string name="loading_workspace">Loading BABA Family Workspace...</string>
 </resources>

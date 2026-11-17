@@ -173,7 +173,20 @@ class SafetyPolicyAgent {
         "keep this secret from",
         "hide this from mom",
         "hide this from dad",
-        "promise not to tell"
+        "promise not to tell",
+        "mummy ko mat batana",
+        "papa ko mat batana",
+        "ammi ko mat batana",
+        "abbu ko mat batana",
+        "raaz rakhna",
+        "मम्मी को मत बताना",
+        "पापा को मत बताना",
+        "बुबा लाई नभन्नु",
+        "आमा लाई नभन्नु",
+        "বাবাকে বলো না",
+        "মাকে বলো না",
+        "امی کو مت بتانا",
+        "ابو کو مت بتانا"
     )
 
     private val piiPatterns = listOf(
@@ -195,7 +208,11 @@ class SafetyPolicyAgent {
         "911",
         "bleeding",
         "chest pain",
-        "overdose"
+        "overdose",
+        "आत्महत्या",
+        "খুন",
+        "আত্মহত্যা",
+        "خودکشی"
     )
 
     private val professionalAdvicePatterns = listOf(
@@ -305,7 +322,6 @@ class SafetyPolicyAgent {
         val permittedIds = (permittedContext.memories.map { it.id } + permittedContext.guidance.map { it.id }).toSet()
         val sanitizedRefs = raw.sourceReferences.filter { it in permittedIds }
 
-        // Enforce real-father disclosure if asked directly or if model attempts impersonation
         val impersonationLeak = lowerOutput.contains("i am your real father") ||
             lowerOutput.contains("i am really your dad") ||
             lowerOutput.contains("this is the real baba speaking")
@@ -333,7 +349,6 @@ class SafetyPolicyAgent {
             finalText = "$finalText\n\nNote: There are conflicting approved guidance entries on this topic, so I have flagged this for an authorized adult to review."
         }
 
-        // For DIGITAL_BABA: if no approved guidance or memory matched and the user is asking for a decision/permission
         val decisionCue = lowerPrompt.contains("can i ") ||
             lowerPrompt.contains("may i ") ||
             lowerPrompt.contains("should i ") ||
@@ -353,7 +368,6 @@ class SafetyPolicyAgent {
             }
         }
 
-        // Child learning safeguard: encourage checking school materials
         if (requester.role == FamilyRole.CHILD.apiValue && agentName == "ChildrenLearningAgent") {
             if (!lowerOutput.contains("school") && !lowerOutput.contains("check")) {
                 finalText = "$finalText\n\nTip: Remember to double-check with your school notes or teacher too!"
@@ -379,11 +393,26 @@ class SafetyPolicyAgent {
  */
 object SpecialistAgentPrompts {
 
+    private fun languageInstruction(preferredLocale: String): String {
+        val label = when (preferredLocale.trim().lowercase()) {
+            "ne" -> "Nepali (नेपाली)"
+            "hi" -> "Hindi (हिन्दी)"
+            "bn" -> "Bengali / Bangladeshi (বাংলা)"
+            "ur" -> "Urdu / Pakistani (اردو)"
+            "ar" -> "Arabic (العربية)"
+            else -> "English"
+        }
+        return "RESPONSE LANGUAGE RULE: Reply warmly and clearly in $label (matching the user's selected family language, unless they explicitly write and ask in another language). Keep every safety rule, AI disclosure, and honesty requirement intact."
+    }
+
     fun buildFatherIdentityPrompt(
         identity: AiIdentity,
-        context: MemoryAgent.PermittedContext
+        context: MemoryAgent.PermittedContext,
+        preferredLocale: String = "en"
     ): String = buildString {
         appendLine("You are Logical Agent 1: Father Identity Agent (mode: DIGITAL_BABA).")
+        appendLine("FAMILY CONTEXT: Supporting a family where the father/husband may live or work far away; foster genuine warmth and encourage real human calls/messages when needed.")
+        appendLine(languageInstruction(preferredLocale))
         appendLine("CRITICAL RULES:")
         appendLine("1. You are an AI representation grounded ONLY in Father's approved profile, approved memories, and approved guidance below.")
         appendLine("2. NEVER pretend to be the real human father or imply this is a live conversation.")
@@ -399,8 +428,13 @@ object SpecialistAgentPrompts {
         appendContextRecords(context)
     }
 
-    fun buildFamilyCompanionPrompt(requesterRole: String): String = buildString {
+    fun buildFamilyCompanionPrompt(
+        requesterRole: String,
+        preferredLocale: String = "en"
+    ): String = buildString {
         appendLine("You are Logical Agent 2: Family Companion Agent (mode: BABA_COMPANION).")
+        appendLine("FAMILY CONTEXT: Supporting a long-distance family ($requesterRole) when the father/husband works far from home—offer practical organization, emotional encouragement, and healthy human connection.")
+        appendLine(languageInstruction(preferredLocale))
         appendLine("CRITICAL RULES:")
         appendLine("1. You are BABA, an independent AI companion (NOT Digital Baba and NOT a human).")
         appendLine("2. Support the $requesterRole with practical family organization, warm everyday conversation, and encouragement to connect with real family members.")
@@ -408,9 +442,13 @@ object SpecialistAgentPrompts {
         appendLine("4. Set identity_mode='BABA_COMPANION' and source_type='general_ai'.")
     }
 
-    fun buildChildrenLearningPrompt(ageBand: AgeBand): String = buildString {
+    fun buildChildrenLearningPrompt(
+        ageBand: AgeBand,
+        preferredLocale: String = "en"
+    ): String = buildString {
         appendLine("You are Logical Agent 3: Children Learning Agent (mode: BABA_COMPANION).")
         appendLine("Target Child Age Band: ${ageBand.label}.")
+        appendLine(languageInstruction(preferredLocale))
         appendLine("CRITICAL RULES:")
         appendLine("1. Provide warm, age-appropriate explanations, practice questions, and reading/quiz support.")
         appendLine("2. Guide the child step-by-step instead of completing graded homework/assessments for them.")
@@ -421,12 +459,14 @@ object SpecialistAgentPrompts {
 
     fun buildStorytellingPrompt(
         ageBand: AgeBand,
-        context: MemoryAgent.PermittedContext
+        context: MemoryAgent.PermittedContext,
+        preferredLocale: String = "en"
     ): String = buildString {
         appendLine("You are Logical Agent 4: Storytelling Agent (mode: BABA_COMPANION).")
         appendLine("Target Child Age Band: ${ageBand.label}.")
+        appendLine(languageInstruction(preferredLocale))
         appendLine("CRITICAL RULES:")
-        appendLine("1. Craft a gentle, age-appropriate bedtime or adventure story.")
+        appendLine("1. Craft a gentle, age-appropriate bedtime or adventure story celebrating love across distance.")
         appendLine("2. You may weave in ONLY the approved family memories listed below, clearly blending safe fictionalization.")
         appendLine("3. Never reveal private memories or use unapproved likenesses.")
         appendLine("4. Cite any used memory IDs in source_references and set source_type='memory' if used, else 'general_ai'.")
