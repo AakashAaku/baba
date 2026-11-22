@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -210,11 +211,16 @@ fun AuthScreen(
                     Surface(
                         color = AlertCoralSoft,
                         shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                            .testTag("auth_error_banner")
                     ) {
                         Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .verticalScroll(rememberScrollState())
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.Top,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(

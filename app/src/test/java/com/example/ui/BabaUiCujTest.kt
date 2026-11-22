@@ -117,4 +117,22 @@ class BabaUiCujTest {
             composeRule.onNodeWithText(expectedSignInText).assertIsDisplayed()
         }
     }
+
+    @Test
+    fun authScreenDisplaysActionableSignInDiagnosticsAndKeepsButtonClickable() {
+        var clicked = false
+        composeRule.setContent {
+            BabaTheme {
+                AuthScreen(
+                    isSigningIn = false,
+                    errorMessage = "Google Sign-In failed.\nDebug SHA-1: cf:92:13:35",
+                    onGoogleSignIn = { clicked = true }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("auth_error_banner").assertIsDisplayed()
+        composeRule.onNodeWithTag("google_sign_in_button").assertIsDisplayed().performClick()
+        assertEquals(true, clicked)
+    }
 }

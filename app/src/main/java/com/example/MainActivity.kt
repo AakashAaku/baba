@@ -70,7 +70,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.core.AppLanguage
 import com.example.core.AppLocaleHelper
 import com.example.core.LocalePreferenceStore
-import com.example.core.attemptAutoSignIn
 import com.example.core.authStateFlow
 import com.example.core.configureAppCheck
 import com.example.core.onGoogleSignInClicked
@@ -146,21 +145,6 @@ private fun BabaRootApp() {
         .collectAsStateWithLifecycle(initialValue = Firebase.auth.currentUser)
     var isSigningIn by remember { mutableStateOf(false) }
     var authError by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        if (Firebase.auth.currentUser == null) {
-            kotlinx.coroutines.delay(400L)
-            if (Firebase.auth.currentUser == null) {
-                attemptAutoSignIn(
-                    context = hostContext,
-                    credentialManager = credentialManager,
-                    onAuthSuccess = { authError = null },
-                    onUnauthenticated = {},
-                    scope = scope
-                )
-            }
-        }
-    }
 
     LocalizedBabaEnvironment(baseContext = hostContext, localeCode = selectedLocale) {
         val user = currentUser
