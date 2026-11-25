@@ -434,16 +434,34 @@ class BabaWorkspaceViewModel(
         }
     }
 
+    private fun formatAiError(e: Exception, fallback: String): String {
+        val raw = e.localizedMessage?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName
+        val isAppCheck = raw.contains("App Check", ignoreCase = true) ||
+            raw.contains("403", ignoreCase = true) ||
+            raw.contains("attestation", ignoreCase = true) ||
+            raw.contains("PERMISSION_DENIED", ignoreCase = true)
+        return if (isAppCheck) {
+            "Firebase App Check rejected this device debug build ($raw). In Android Studio Logcat, filter for \"DebugAppCheckProvider\" to copy your device debug token UUID and register it under Firebase Console → App Check → Apps → Manage debug tokens."
+        } else {
+            raw.ifBlank { fallback }
+        }
+    }
+
     fun previewDigitalBabaSample(
         data: BabaWorkspaceData,
         sampleQuestion: String,
         draftIdentity: AiIdentity
     ) {
+        if (sampleQuestion.isBlank()) {
+            _aiError.value = "Enter a sample question to preview how Digital Baba responds."
+            return
+        }
         val family = data.activeFamily ?: return
         val member = data.currentMember ?: return
         viewModelScope.launch {
             _aiBusy.value = true
             _aiError.value = null
+            _previewResponse.value = null
             try {
                 val res = orchestrator.handleRequest(
                     familyId = family.id,
@@ -457,12 +475,12 @@ class BabaWorkspaceViewModel(
                 )
                 _previewResponse.value = "[${res.response.identityMode.label} | ${res.response.sourceType.label}]\n${res.response.responseText}"
             } catch (e: TimeoutCancellationException) {
-                _aiError.value = "Preview timed out after 60 seconds. Please try again."
+                _aiError.value = "Preview timed out after 60 seconds. Please check your internet connection and retry."
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Digital Baba preview failed", e)
-                _aiError.value = e.localizedMessage ?: "Preview failed."
+                _aiError.value = formatAiError(e, "Preview failed.")
             } finally {
                 _aiBusy.value = false
             }
@@ -877,7 +895,7 @@ class BabaWorkspaceViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Wife companion error", e)
-                _aiError.value = e.localizedMessage ?: "Failed to reach BABA Companion."
+                _aiError.value = formatAiError(e, "Failed to reach BABA Companion.")
             } finally {
                 _aiBusy.value = false
             }
@@ -1003,7 +1021,7 @@ class BabaWorkspaceViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "AI generation failed", e)
-                _aiError.value = e.localizedMessage ?: "AI generation failed."
+                _aiError.value = formatAiError(e, "AI generation failed.")
             } finally {
                 _aiBusy.value = false
             }

@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -60,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
@@ -112,14 +116,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun LocalizedBabaEnvironment(
+internal fun LocalizedBabaEnvironment(
     baseContext: Context,
     localeCode: String,
     content: @Composable () -> Unit
 ) {
     val lang = AppLanguage.fromCode(localeCode)
     val localizedCtx = remember(baseContext, lang.code) {
-        AppLocaleHelper.localizedContext(baseContext, lang.code)
+        AppLocaleHelper.localizedActivityContext(baseContext, lang.code)
     }
     val direction = if (lang.isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
     CompositionLocalProvider(
@@ -251,9 +255,13 @@ private fun AuthenticatedBabaWorkspace(
     if (showLanguageDialog) {
         AlertDialog(
             onDismissRequest = { showLanguageDialog = false },
+            modifier = Modifier.testTag("language_dialog"),
             title = { Text(stringResource(R.string.select_language_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Text(
                         text = stringResource(R.string.select_language_subtitle),
                         style = MaterialTheme.typography.bodySmall,
@@ -269,7 +277,10 @@ private fun AuthenticatedBabaWorkspace(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showLanguageDialog = false }) {
+                TextButton(
+                    onClick = { showLanguageDialog = false },
+                    modifier = Modifier.testTag("language_dialog_close")
+                ) {
                     Text(stringResource(R.string.action_close))
                 }
             }
@@ -362,219 +373,265 @@ private fun AuthenticatedBabaWorkspace(
                     }
                 }
             } else {
-                val role = data.currentMember?.role ?: FamilyRole.FATHER.apiValue
-                val allowedSurfaces = if (role == FamilyRole.CHILD.apiValue) {
-                    listOf(AppSurface.KIDS, AppSurface.FAMILY_HUB)
-                } else {
-                    listOf(
-                        AppSurface.FATHER,
-                        AppSurface.WIFE,
-                        AppSurface.KIDS,
-                        AppSurface.FAMILY_HUB,
-                        AppSurface.GOVERNANCE
-                    )
-                }
-                val defaultSurface = when (role) {
-                    FamilyRole.WIFE.apiValue -> AppSurface.WIFE
-                    FamilyRole.CHILD.apiValue -> AppSurface.KIDS
-                    else -> AppSurface.FATHER
-                }
-                val currentSurface = selectedSurfaceState?.takeIf { it in allowedSurfaces } ?: defaultSurface
-                val quietHours = data.userAccount?.quietHoursEnabled ?: false
-                val unreadNotifications = data.notifications.filter { user.uid !in it.readByUids }
-                var showNotificationsDialog by remember { mutableStateOf(false) }
+                BabaWorkspaceScaffold(
+                    data = data,
+                    viewModel = viewModel,
+                    currentUserUid = user.uid,
+                    selectedSurfaceState = selectedSurfaceState,
+                    supervisedChildId = supervisedChildId,
+                    aiBusy = aiBusy,
+                    aiError = aiError,
+                    statusBanner = statusBanner,
+                    previewResponse = previewResponse,
+                    onShowLanguageDialog = { showLanguageDialog = true },
+                    onSignOut = onSignOut
+                )
+            }
+        }
+    }
+}
 
-                if (showNotificationsDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showNotificationsDialog = false },
-                        title = {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun BabaWorkspaceScaffold(
+    data: BabaWorkspaceData,
+    viewModel: BabaWorkspaceViewModel,
+    currentUserUid: String,
+    selectedSurfaceState: AppSurface?,
+    supervisedChildId: String?,
+    aiBusy: Boolean,
+    aiError: String?,
+    statusBanner: String?,
+    previewResponse: String?,
+    onShowLanguageDialog: () -> Unit,
+    onSignOut: () -> Unit
+) {
+    val activeFamily = data.activeFamily ?: return
+    val role = data.currentMember?.role ?: FamilyRole.FATHER.apiValue
+    val allowedSurfaces = if (role == FamilyRole.CHILD.apiValue) {
+        listOf(AppSurface.KIDS, AppSurface.FAMILY_HUB)
+    } else {
+        listOf(
+            AppSurface.FATHER,
+            AppSurface.WIFE,
+            AppSurface.KIDS,
+            AppSurface.FAMILY_HUB,
+            AppSurface.GOVERNANCE
+        )
+    }
+    val defaultSurface = when (role) {
+        FamilyRole.WIFE.apiValue -> AppSurface.WIFE
+        FamilyRole.CHILD.apiValue -> AppSurface.KIDS
+        else -> AppSurface.FATHER
+    }
+    val currentSurface = selectedSurfaceState?.takeIf { it in allowedSurfaces } ?: defaultSurface
+    val quietHours = data.userAccount?.quietHoursEnabled ?: false
+    val unreadNotifications = data.notifications.filter { currentUserUid !in it.readByUids }
+    var showNotificationsDialog by remember { mutableStateOf(false) }
+
+    if (showNotificationsDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotificationsDialog = false },
+            modifier = Modifier.testTag("notifications_dialog"),
+            title = {
+                Text(
+                    if (quietHours) "Family Notifications (Quiet Hours On)" else "Family Notifications (${data.notifications.size})"
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (quietHours) {
+                        Text(
+                            text = "Quiet Hours active — non-urgent chimes are muted.",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    if (data.notifications.isEmpty()) {
+                        Text("No notifications yet.", style = MaterialTheme.typography.bodyMedium)
+                    } else {
+                        data.notifications.take(10).forEach { notif ->
+                            val isUnread = currentUserUid !in notif.readByUids
+                            Surface(
+                                color = if (isUnread) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(notif.title, style = MaterialTheme.typography.titleSmall)
+                                        Text(notif.body, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    if (isUnread) {
+                                        TextButton(onClick = {
+                                            viewModel.markNotificationRead(activeFamily.id, notif.id)
+                                        }) {
+                                            Text("Read")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showNotificationsDialog = false },
+                    modifier = Modifier.testTag("notifications_dialog_close")
+                ) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val useRail = maxWidth >= 600.dp
+        Scaffold(
+            contentWindowInsets = WindowInsets.safeDrawing,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                if (quietHours) "Family Notifications (Quiet Hours On)" else "Family Notifications (${data.notifications.size})"
+                                text = "${stringResource(R.string.app_name)} • ${surfaceLocalizedLabel(currentSurface)}",
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                        },
-                        text = {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (quietHours) {
-                                    Text(
-                                        text = "Quiet Hours active — non-urgent chimes are muted.",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                }
-                                if (data.notifications.isEmpty()) {
-                                    Text("No notifications yet.", style = MaterialTheme.typography.bodyMedium)
-                                } else {
-                                    data.notifications.take(10).forEach { notif ->
-                                        val isUnread = user.uid !in notif.readByUids
-                                        Surface(
-                                            color = if (isUnread) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(10.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(notif.title, style = MaterialTheme.typography.titleSmall)
-                                                    Text(notif.body, style = MaterialTheme.typography.bodySmall)
-                                                }
-                                                if (isUnread) {
-                                                    TextButton(onClick = {
-                                                        data.activeFamily.let { fam ->
-                                                            viewModel.markNotificationRead(fam.id, notif.id)
-                                                        }
-                                                    }) {
-                                                        Text("Read")
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { showNotificationsDialog = false }) {
-                                Text(stringResource(R.string.action_close))
-                            }
-                        }
-                    )
-                }
-
-                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                    val useRail = maxWidth >= 600.dp
-                    Scaffold(
-                        contentWindowInsets = WindowInsets.safeDrawing,
-                        topBar = {
-                            TopAppBar(
-                                title = {
-                                    Column {
-                                        Text(
-                                            text = "${stringResource(R.string.app_name)} • ${surfaceLocalizedLabel(currentSurface)}",
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                        Text(
-                                            text = data.activeFamily.name,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                ),
-                                actions = {
-                                    IconButton(
-                                        onClick = { showLanguageDialog = true },
-                                        modifier = Modifier.testTag("topbar_language_button")
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Language,
-                                            contentDescription = stringResource(R.string.select_language_title)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { showNotificationsDialog = true },
-                                        modifier = Modifier.testTag("notifications_inbox_button")
-                                    ) {
-                                        BadgedBox(
-                                            badge = {
-                                                if (unreadNotifications.isNotEmpty() && !quietHours) {
-                                                    Badge { Text("${unreadNotifications.size}") }
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = if (quietHours) Icons.Default.NotificationsPaused else Icons.Default.Notifications,
-                                                contentDescription = "Notifications inbox"
-                                            )
-                                        }
-                                    }
-                                    IconButton(
-                                        onClick = onSignOut,
-                                        modifier = Modifier.testTag("sign_out_button")
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.Logout,
-                                            contentDescription = stringResource(R.string.sign_out)
-                                        )
-                                    }
-                                }
+                            Text(
+                                text = activeFamily.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                        },
-                        bottomBar = {
-                            if (!useRail) {
-                                NavigationBar {
-                                    allowedSurfaces.forEach { surface ->
-                                        NavigationBarItem(
-                                            selected = currentSurface == surface,
-                                            onClick = { viewModel.selectSurface(surface) },
-                                            icon = { SurfaceIcon(surface) },
-                                            label = { Text(surfaceLocalizedLabel(surface), maxLines = 1) },
-                                            modifier = Modifier.testTag("nav_${surface.routeKey}")
-                                        )
-                                    }
-                                }
-                            }
                         }
-                    ) { innerPadding ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding)
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    actions = {
+                        IconButton(
+                            onClick = onShowLanguageDialog,
+                            modifier = Modifier.testTag("topbar_language_button")
                         ) {
-                            if (useRail) {
-                                NavigationRail {
-                                    allowedSurfaces.forEach { surface ->
-                                        NavigationRailItem(
-                                            selected = currentSurface == surface,
-                                            onClick = { viewModel.selectSurface(surface) },
-                                            icon = { SurfaceIcon(surface) },
-                                            label = { Text(surfaceLocalizedLabel(surface), maxLines = 1) },
-                                            modifier = Modifier.testTag("nav_${surface.routeKey}")
-                                        )
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = stringResource(R.string.select_language_title)
+                            )
+                        }
+                        IconButton(
+                            onClick = { showNotificationsDialog = true },
+                            modifier = Modifier.testTag("notifications_inbox_button")
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (unreadNotifications.isNotEmpty() && !quietHours) {
+                                        Badge { Text("${unreadNotifications.size}") }
                                     }
                                 }
-                            }
-                            Box(modifier = Modifier.weight(1f)) {
-                                when (currentSurface) {
-                                    AppSurface.FATHER -> FatherScreen(
-                                        data = data,
-                                        viewModel = viewModel,
-                                        aiBusy = aiBusy,
-                                        previewResponse = previewResponse,
-                                        statusBanner = statusBanner
-                                    )
-                                    AppSurface.WIFE -> WifeScreen(
-                                        data = data,
-                                        viewModel = viewModel,
-                                        aiBusy = aiBusy,
-                                        aiError = aiError,
-                                        statusBanner = statusBanner
-                                    )
-                                    AppSurface.KIDS -> KidsScreen(
-                                        data = data,
-                                        viewModel = viewModel,
-                                        supervisedChildId = supervisedChildId,
-                                        aiBusy = aiBusy,
-                                        aiError = aiError,
-                                        statusBanner = statusBanner
-                                    )
-                                    AppSurface.FAMILY_HUB -> FamilyHubScreen(
-                                        data = data,
-                                        viewModel = viewModel,
-                                        statusBanner = statusBanner
-                                    )
-                                    AppSurface.GOVERNANCE -> GovernanceAdminScreen(
-                                        data = data,
-                                        viewModel = viewModel,
-                                        statusBanner = statusBanner
-                                    )
-                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (quietHours) Icons.Default.NotificationsPaused else Icons.Default.Notifications,
+                                    contentDescription = "Notifications inbox"
+                                )
                             }
                         }
+                        IconButton(
+                            onClick = onSignOut,
+                            modifier = Modifier.testTag("sign_out_button")
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = stringResource(R.string.sign_out)
+                            )
+                        }
+                    }
+                )
+            },
+            bottomBar = {
+                if (!useRail) {
+                    NavigationBar {
+                        allowedSurfaces.forEach { surface ->
+                            NavigationBarItem(
+                                selected = currentSurface == surface,
+                                onClick = { viewModel.selectSurface(surface) },
+                                icon = { SurfaceIcon(surface) },
+                                label = { Text(surfaceLocalizedLabel(surface), maxLines = 1) },
+                                modifier = Modifier.testTag("nav_${surface.routeKey}")
+                            )
+                        }
+                    }
+                }
+            }
+        ) { innerPadding ->
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                if (useRail) {
+                    NavigationRail {
+                        allowedSurfaces.forEach { surface ->
+                            NavigationRailItem(
+                                selected = currentSurface == surface,
+                                onClick = { viewModel.selectSurface(surface) },
+                                icon = { SurfaceIcon(surface) },
+                                label = { Text(surfaceLocalizedLabel(surface), maxLines = 1) },
+                                modifier = Modifier.testTag("nav_${surface.routeKey}")
+                            )
+                        }
+                    }
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    when (currentSurface) {
+                        AppSurface.FATHER -> FatherScreen(
+                            data = data,
+                            viewModel = viewModel,
+                            aiBusy = aiBusy,
+                            aiError = aiError,
+                            onClearAiError = viewModel::clearAiError,
+                            previewResponse = previewResponse,
+                            statusBanner = statusBanner,
+                            onNavigateSurface = viewModel::selectSurface
+                        )
+                        AppSurface.WIFE -> WifeScreen(
+                            data = data,
+                            viewModel = viewModel,
+                            aiBusy = aiBusy,
+                            aiError = aiError,
+                            statusBanner = statusBanner
+                        )
+                        AppSurface.KIDS -> KidsScreen(
+                            data = data,
+                            viewModel = viewModel,
+                            supervisedChildId = supervisedChildId,
+                            aiBusy = aiBusy,
+                            aiError = aiError,
+                            statusBanner = statusBanner
+                        )
+                        AppSurface.FAMILY_HUB -> FamilyHubScreen(
+                            data = data,
+                            viewModel = viewModel,
+                            statusBanner = statusBanner
+                        )
+                        AppSurface.GOVERNANCE -> GovernanceAdminScreen(
+                            data = data,
+                            viewModel = viewModel,
+                            statusBanner = statusBanner
+                        )
                     }
                 }
             }

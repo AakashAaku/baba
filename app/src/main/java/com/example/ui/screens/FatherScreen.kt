@@ -24,17 +24,23 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.FamilyRestroom
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -60,6 +66,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,15 +74,20 @@ import com.example.R
 import com.example.core.VoiceRecorderHelper
 import com.example.domain.model.AgeBand
 import com.example.domain.model.AiIdentity
+import com.example.domain.model.AppSurface
 import com.example.domain.model.FamilyGuidance
 import com.example.domain.model.FamilyRole
 import com.example.domain.model.IdentityMode
 import com.example.ui.components.EmptyStateCard
+import com.example.ui.components.IdentityModeBadge
 import com.example.ui.components.ModeDisclosureHeader
 import com.example.ui.components.StatusBannerBar
 import com.example.ui.components.SyncedMediaImage
 import com.example.ui.components.VoiceNoteControlRow
 import com.example.ui.theme.AlertCoral
+import com.example.ui.theme.AlertCoralSoft
+import com.example.ui.theme.ConnectionMintDeep
+import com.example.ui.theme.ConnectionMintSoft
 import com.example.ui.theme.WarmGoldDeep
 import com.example.ui.theme.WarmGoldSoft
 import com.example.ui.viewmodel.BabaWorkspaceData
@@ -88,7 +100,10 @@ fun FatherScreen(
     viewModel: BabaWorkspaceViewModel,
     aiBusy: Boolean,
     previewResponse: String?,
-    statusBanner: String?
+    statusBanner: String?,
+    aiError: String? = null,
+    onClearAiError: () -> Unit = {},
+    onNavigateSurface: (AppSurface) -> Unit = {}
 ) {
     val family = data.activeFamily ?: return
     val member = data.currentMember ?: return
@@ -134,7 +149,11 @@ fun FatherScreen(
                     data = data,
                     viewModel = viewModel,
                     aiBusy = aiBusy,
-                    previewResponse = previewResponse
+                    aiError = aiError,
+                    onClearAiError = onClearAiError,
+                    previewResponse = previewResponse,
+                    onJumpToTab = { selectedTab = it },
+                    onNavigateSurface = onNavigateSurface
                 )
                 1 -> FatherMemoryLibraryTab(data = data, viewModel = viewModel)
                 2 -> FatherLiveGuidanceTab(data = data, viewModel = viewModel)
@@ -145,15 +164,54 @@ fun FatherScreen(
     }
 }
 
+private data class FatherBioStarter(
+    val label: String,
+    val style: String,
+    val values: String,
+    val interests: String,
+    val bio: String
+)
+
+private val fatherBioStarters = listOf(
+    FatherBioStarter(
+        label = "Warm & Encouraging",
+        style = "Warm, steady, patient, and hopeful",
+        values = "Honesty, kindness, education, family respect, and never giving up",
+        interests = "Weekend breakfasts, sharing life lessons, cheering on schoolwork",
+        bio = "I work away from home so our family can thrive. Remind my wife and children that I think of them every day, encourage them to share worries openly, and keep bedtime peaceful and grateful."
+    ),
+    FatherBioStarter(
+        label = "Wise Storyteller",
+        style = "Calm, thoughtful, story-driven, and gentle",
+        values = "Curiosity, gratitude, patience, and helping others",
+        interests = "History stories, stargazing, nature walks, family traditions",
+        bio = "I love teaching through short stories and calm reflection. When children ask hard questions, share lessons from my childhood and encourage them to talk things through with Mama and Baba."
+    ),
+    FatherBioStarter(
+        label = "Supportive Mentor",
+        style = "Clear, accountable, caring, and reassuring",
+        values = "Integrity, responsibility, empathy, and teamwork at home",
+        interests = "Sportsmanship, problem-solving, budgeting, building good habits",
+        bio = "Mistakes are how we learn. Emphasize telling the truth, taking responsibility calmly, and supporting one another while we bridge the distance between our home and my workplace."
+    )
+)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FatherIdentityStudioTab(
     data: BabaWorkspaceData,
     viewModel: BabaWorkspaceViewModel,
     aiBusy: Boolean,
-    previewResponse: String?
+    aiError: String?,
+    onClearAiError: () -> Unit,
+    previewResponse: String?,
+    onJumpToTab: (Int) -> Unit,
+    onNavigateSurface: (AppSurface) -> Unit
 ) {
     val family = data.activeFamily ?: return
+    val member = data.currentMember
     val latestIdentity = data.identities.firstOrNull()
+    val pendingGuidanceCount = data.guidanceList.count { it.status == "requested" }
     var style by remember(latestIdentity?.id, latestIdentity?.activeVersion) {
         mutableStateOf(latestIdentity?.communicationStyle ?: "Warm, steady, reflective, honest, and encouraging")
     }
@@ -168,29 +226,86 @@ private fun FatherIdentityStudioTab(
     }
     var sampleQuestion by remember { mutableStateOf("What value matters most when someone makes a mistake?") }
 
-    ModeDisclosureHeader(
-        mode = IdentityMode.DIGITAL_BABA,
-        subtitle = "Active Status: ${latestIdentity?.status?.uppercase() ?: "NOT CREATED"} (v${latestIdentity?.activeVersion ?: 0}) • Text voice-cloning disabled in v1."
-    )
+    val statusText = when (latestIdentity?.status) {
+        "approved" -> "Published v${latestIdentity.activeVersion}"
+        "draft" -> "Saved Draft v${latestIdentity.activeVersion}"
+        "suspended" -> "Paused v${latestIdentity.activeVersion}"
+        else -> "Setup Not Published Yet"
+    }
 
-    Surface(
-        color = WarmGoldSoft,
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth()
+    // Father Home Overview Card
+    Card(
+        modifier = Modifier.fillMaxWidth().testTag("father_overview_card"),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Default.RecordVoiceOver, contentDescription = "Voice policy", tint = WarmGoldDeep)
-            Text(
-                text = "Voice Cloning Policy (v1): Synthetic voice replication is disabled. Family audio is limited to genuine human recordings.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = WarmGoldDeep
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Salaam, ${member?.displayName ?: "Baba"}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${family.name} • ${data.members.size} members • ${data.memories.size} memories",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    color = if (latestIdentity?.status == "approved") ConnectionMintSoft else WarmGoldSoft,
+                    shape = RoundedCornerShape(999.dp)
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (latestIdentity?.status == "approved") ConnectionMintDeep else WarmGoldDeep,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                AssistChip(
+                    onClick = { onJumpToTab(3) },
+                    leadingIcon = { Icon(Icons.Default.Mic, contentDescription = "Record real voice") },
+                    label = { Text("Send Real Voice") }
+                )
+                AssistChip(
+                    onClick = { onJumpToTab(1) },
+                    leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = "Add memory") },
+                    label = { Text("Add Memory") }
+                )
+                AssistChip(
+                    onClick = { onNavigateSurface(AppSurface.FAMILY_HUB) },
+                    leadingIcon = { Icon(Icons.Default.FamilyRestroom, contentDescription = "Open Hub") },
+                    label = { Text("Open Family Hub") }
+                )
+                if (pendingGuidanceCount > 0) {
+                    AssistChip(
+                        onClick = { onJumpToTab(2) },
+                        label = { Text("$pendingGuidanceCount Live Guidance Ask") }
+                    )
+                }
+            }
         }
     }
+
+    ModeDisclosureHeader(
+        mode = IdentityMode.DIGITAL_BABA,
+        subtitle = "Always disclosed as AI ($statusText). Genuine human recordings stay separate under Real Baba."
+    )
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -206,35 +321,77 @@ private fun FatherIdentityStudioTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(Icons.Default.Psychology, contentDescription = "Digital Baba studio")
-                Text("Digital Baba Identity Setup", style = MaterialTheme.typography.titleLarge)
+                Text("Shape Your Digital Baba", style = MaterialTheme.typography.titleLarge)
+            }
+            Text(
+                text = "Tap a quick starter below or write in your own words what your wife and children should hear about your values.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                fatherBioStarters.forEach { starter ->
+                    AssistChip(
+                        onClick = {
+                            style = starter.style
+                            values = starter.values
+                            interests = starter.interests
+                            bio = starter.bio
+                        },
+                        leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = starter.label) },
+                        label = { Text("Use: ${starter.label}") }
+                    )
+                }
             }
 
             OutlinedTextField(
                 value = style,
                 onValueChange = { style = it },
-                label = { Text("Communication Style") },
+                label = { Text("Tone & Communication Style") },
                 modifier = Modifier.fillMaxWidth().testTag("identity_style_input")
             )
             OutlinedTextField(
                 value = values,
                 onValueChange = { values = it },
-                label = { Text("Core Values") },
+                label = { Text("Core Family Values") },
                 modifier = Modifier.fillMaxWidth().testTag("identity_values_input")
             )
             OutlinedTextField(
                 value = interests,
                 onValueChange = { interests = it },
-                label = { Text("Interests & Storytelling Themes") },
+                label = { Text("Shared Interests & Traditions") },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = bio,
                 onValueChange = { bio = it },
-                label = { Text("Approved Father Bio & Principles") },
-                placeholder = { Text("Describe your real perspective, traditions, and how Digital Baba should frame your guidance...") },
+                label = { Text("Your Personal Message & Principles") },
+                placeholder = { Text("Example: Tell my children how proud I am of their effort, remind them to be kind and honest, and encourage them to talk with Mama and Baba.") },
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth().testTag("identity_bio_input")
             )
+
+            Surface(
+                color = WarmGoldSoft,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.RecordVoiceOver, contentDescription = "Voice policy", tint = WarmGoldDeep)
+                    Text(
+                        text = "Voice Cloning Off: BABA uses genuine human voice notes only.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmGoldDeep
+                    )
+                }
+            }
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(
@@ -277,7 +434,7 @@ private fun FatherIdentityStudioTab(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = AlertCoral),
                     modifier = Modifier.fillMaxWidth().testTag("suspend_identity_button")
                 ) {
-                    Text("Suspend Digital Baba Immediately")
+                    Text("Pause Digital Baba Immediately")
                 }
             }
         }
@@ -292,12 +449,32 @@ private fun FatherIdentityStudioTab(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Live Safety & Grounding Preview", style = MaterialTheme.typography.titleMedium)
+            Text("Preview Digital Baba Response", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Test how Digital Baba answers your family before or after publishing.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(
+                    "What value matters most when someone makes a mistake?",
+                    "Give my kids gentle encouragement before school.",
+                    "Should we buy a new car this month?"
+                ).forEach { q ->
+                    AssistChip(
+                        onClick = { sampleQuestion = q },
+                        label = { Text(q, maxLines = 1) }
+                    )
+                }
+            }
             OutlinedTextField(
                 value = sampleQuestion,
                 onValueChange = { sampleQuestion = it },
-                label = { Text("Test Question") },
-                modifier = Modifier.fillMaxWidth()
+                label = { Text("Sample Family Question") },
+                modifier = Modifier.fillMaxWidth().testTag("preview_question_input")
             )
             Button(
                 onClick = {
@@ -307,26 +484,65 @@ private fun FatherIdentityStudioTab(
                         communicationStyle = style,
                         values = values,
                         interests = interests,
-                        bioSummary = bio
+                        bioSummary = bio.ifBlank { "I want my family to lead with kindness, honesty, and mutual support." }
                     )
                     viewModel.previewDigitalBabaSample(data, sampleQuestion, draft)
                 },
                 enabled = !aiBusy,
                 modifier = Modifier.fillMaxWidth().testTag("preview_identity_button")
             ) {
+                if (aiBusy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp).height(18.dp).widthIn(min = 18.dp, max = 18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
                 Text(if (aiBusy) "Generating Preview..." else "Preview Digital Baba Response")
             }
+
+            if (!aiError.isNullOrBlank()) {
+                Surface(
+                    color = AlertCoralSoft,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("preview_error_banner")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.ErrorOutline, contentDescription = "Preview error", tint = AlertCoral)
+                        Text(
+                            text = aiError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = AlertCoral,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = onClearAiError) {
+                            Text("Dismiss")
+                        }
+                    }
+                }
+            }
+
             if (!previewResponse.isNullOrBlank()) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth().testTag("preview_response_card")
                 ) {
-                    Text(
-                        text = previewResponse,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(12.dp)
-                    )
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IdentityModeBadge(mode = IdentityMode.DIGITAL_BABA)
+                        Text(
+                            text = previewResponse,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
         }

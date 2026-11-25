@@ -161,14 +161,16 @@ object LocalePreferenceStore {
     private const val KEY_WORK_TZ = "father_work_timezone"
     private const val KEY_HOME_TZ = "family_home_timezone"
 
+    private fun prefs(context: Context) =
+        (context.applicationContext ?: context).getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
     fun getSavedLocale(context: Context): String {
-        val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return AppLanguage.fromCode(prefs.getString(KEY_LOCALE, "en")).code
+        return AppLanguage.fromCode(prefs(context).getString(KEY_LOCALE, "en")).code
     }
 
     fun saveLocale(context: Context, localeCode: String, markPreLoginPending: Boolean = false) {
         val normalized = AppLanguage.fromCode(localeCode).code
-        val editor = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        val editor = prefs(context).edit()
         editor.putString(KEY_LOCALE, normalized)
         if (markPreLoginPending) {
             editor.putBoolean(KEY_PRELOGIN_PENDING, true)
@@ -177,62 +179,84 @@ object LocalePreferenceStore {
     }
 
     fun hasPendingPreLoginSelection(context: Context): Boolean =
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_PRELOGIN_PENDING, false)
+        prefs(context).getBoolean(KEY_PRELOGIN_PENDING, false)
 
     fun clearPendingPreLoginSelection(context: Context) {
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putBoolean(KEY_PRELOGIN_PENDING, false)
             .commit()
     }
 
     fun getWorkTimezone(context: Context): String =
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_WORK_TZ, "Asia/Dubai") ?: "Asia/Dubai"
+        prefs(context).getString(KEY_WORK_TZ, "Asia/Dubai") ?: "Asia/Dubai"
 
     fun saveWorkTimezone(context: Context, zoneId: String) {
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().putString(KEY_WORK_TZ, zoneId).commit()
+        prefs(context).edit().putString(KEY_WORK_TZ, zoneId).commit()
     }
 
     fun getHomeTimezone(context: Context, defaultZone: String): String =
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_HOME_TZ, defaultZone) ?: defaultZone
+        prefs(context).getString(KEY_HOME_TZ, defaultZone) ?: defaultZone
 
     fun saveHomeTimezone(context: Context, zoneId: String) {
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().putString(KEY_HOME_TZ, zoneId).commit()
+        prefs(context).edit().putString(KEY_HOME_TZ, zoneId).commit()
+    }
+}
+
+private class LocalizedActivityContextWrapper(
+    base: Context,
+    private val localized: Context
+) : android.content.ContextWrapper(base) {
+    override fun getResources(): android.content.res.Resources = localized.resources
+    override fun getAssets(): android.content.res.AssetManager = localized.assets
+    override fun createConfigurationContext(overrideConfiguration: Configuration): Context {
+        return localized.createConfigurationContext(overrideConfiguration)
     }
 }
 
 object AppLocaleHelper {
+    private fun unwrapLocalizedWrapper(context: Context): Context {
+        var current = context
+        while (current is LocalizedActivityContextWrapper) {
+            current = current.baseContext
+        }
+        return current
+    }
+
     fun applyLocale(context: Context, localeCode: String, markPreLoginPending: Boolean = false): String {
+        val targetContext = unwrapLocalizedWrapper(context)
         val lang = AppLanguage.fromCode(localeCode)
-        LocalePreferenceStore.saveLocale(context, lang.code, markPreLoginPending = markPreLoginPending)
+        LocalePreferenceStore.saveLocale(targetContext, lang.code, markPreLoginPending = markPreLoginPending)
         val locale = Locale.Builder().setLanguage(lang.code).build()
         Locale.setDefault(locale)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             runCatching {
-                val lm = context.getSystemService(LocaleManager::class.java)
+                val lm = (targetContext.applicationContext ?: targetContext).getSystemService(LocaleManager::class.java)
                 lm?.applicationLocales = LocaleList.forLanguageTags(lang.code)
             }
         }
-        val config = Configuration(context.resources.configuration)
+        val config = Configuration(targetContext.resources.configuration)
         config.setLocale(locale)
         config.setLayoutDirection(locale)
         @Suppress("DEPRECATION")
-        context.resources.updateConfiguration(config, context.resources.displayMetrics)
+        targetContext.resources.updateConfiguration(config, targetContext.resources.displayMetrics)
         return lang.code
     }
 
     fun localizedContext(base: Context, localeCode: String): Context {
+        val unwrapped = unwrapLocalizedWrapper(base)
         val lang = AppLanguage.fromCode(localeCode)
         val locale = Locale.Builder().setLanguage(lang.code).build()
-        val config = Configuration(base.resources.configuration)
+        val config = Configuration(unwrapped.resources.configuration)
         config.setLocale(locale)
         config.setLayoutDirection(locale)
-        return base.createConfigurationContext(config)
+        return unwrapped.createConfigurationContext(config)
+    }
+
+    fun localizedActivityContext(base: Context, localeCode: String): Context {
+        val unwrapped = unwrapLocalizedWrapper(base)
+        val localized = localizedContext(unwrapped, localeCode)
+        return LocalizedActivityContextWrapper(unwrapped, localized)
     }
 }
 

@@ -114,8 +114,12 @@ class FirebaseBabaAiProvider : BabaAiProvider {
             it.isNotBlank() && it != "null" && it != "none"
         }
 
+        val parsedText = obj.optString("response_text")
+            .ifBlank { obj.optString("text") }
+            .ifBlank { jsonText }
+
         return RawModelStructuredOutput(
-            responseText = obj.getString("response_text"),
+            responseText = parsedText,
             identityMode = IdentityMode.fromApi(obj.optString("identity_mode", requestedMode.apiValue)),
             sourceType = SourceType.fromApi(obj.optString("source_type", SourceType.GENERAL_AI.apiValue)),
             sourceReferences = refs,
